@@ -4,6 +4,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 const manrope = localFont({ src: "../../public/fonts/manrope.ttf", variable: "--font-manrope", display: "swap", weight: "200 800" });
 export const metadata: Metadata = {
+  metadataBase: new URL("https://gxhubofficemeet.vercel.app"),
+  alternates: { canonical: "/" },
   title: "GX Hub — Seu escritório, sem fronteiras",
   description: "O escritório virtual do ecossistema Grupo X. Conecte pessoas, compartilhe ideias e construa resultados em salas de voz e vídeo.",
   applicationName: "GX Hub",

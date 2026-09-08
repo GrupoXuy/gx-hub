@@ -14,7 +14,8 @@ Um workspace em português inspirado em ambientes isométricos, com a identidade
 
 ## Deploy permanente (GitHub + Vercel + Neon) — ✅ ATIVO
 
-- **Link permanente:** https://gx-hub-escritorio.vercel.app
+- **Link oficial de acesso:** https://gxhubofficemeet.vercel.app
+- **Deploy atual da Vercel:** https://gx-hub-escritorio.vercel.app (fallback enquanto o alias `gxhubofficemeet.vercel.app` é associado ao projeto)
 - **Código:** https://github.com/GrupoXuy/gx-hub-escritorio (push na `main` gera deploy automático de produção)
 - **Banco:** Postgres Neon `neon-carmine-envelope` conectado ao projeto (compartilhado com o app `gx-hub`; tabelas deste app usam o prefixo `gx_`). As tabelas são criadas sozinhas no primeiro acesso (`seedWorkspace` em `src/lib/server.ts`); `migrations/0001_init.sql` serve como referência/documentação do schema.
 
