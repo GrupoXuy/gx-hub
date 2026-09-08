@@ -30,30 +30,18 @@ try {
   for (let i = 0; i < 3; i++) {
     const card = cards.nth(i);
     const main = card.locator('.ecosystem-card-main');
-    assert.equal(await main.getAttribute('href'), expected[i].href, `card ${i} href`);
-    assert.equal(await main.getAttribute('target'), '_blank', `card ${i} target`);
-    assert.equal(await main.getAttribute('rel'), 'noopener noreferrer', `card ${i} rel`);
-    assert.ok((await main.getAttribute('aria-label') || '').length > 5, `card ${i} aria-label`);
-    assert.equal(await card.locator('.ecosystem-card-text > strong').innerText(), expected[i].name, `card ${i} nome`);
-    assert.equal(await card.locator('.ecosystem-card-text > small').innerText(), expected[i].desc, `card ${i} descricao`);
-    // Sem URLs visíveis na interface
+    const official = card.locator('.ecosystem-tab-link');
+    assert.equal(await main.getAttribute('aria-label'), `Abrir detalhes de ${expected[i].name}`, `card ${i} aba`);
+    assert.equal(await official.getAttribute('href'), expected[i].href, `card ${i} link oficial`);
+    assert.equal(await official.getAttribute('target'), '_blank', `card ${i} target`);
+    assert.equal(await official.getAttribute('rel'), 'noopener noreferrer', `card ${i} rel`);
+    assert.ok((await main.innerText()).includes(expected[i].name), `card ${i} nome`);
     assert.ok(!(await card.innerText()).includes('http'), `card ${i} sem URL visivel`);
-    // Logo com fallback gracioso (arquivo ainda ausente -> ícone Lucide)
     assert.equal(await card.locator('.ecosystem-logo').count(), 1, `card ${i} logo box`);
-    const ig = card.locator('.ecosystem-instagram');
-    if (expected[i].instagram) {
-      assert.equal(await ig.count(), 1, 'Senna tem link Instagram discreto');
-      assert.equal(await ig.getAttribute('href'), expected[i].instagram, 'Senna instagram href');
-      assert.equal(await ig.getAttribute('target'), '_blank', 'Senna instagram target');
-      assert.equal(await ig.getAttribute('rel'), 'noopener noreferrer', 'Senna instagram rel');
-    } else {
-      assert.equal(await ig.count(), 0, `card ${i} sem link Instagram extra`);
-    }
-    // Área de toque confortável
     const box = await main.boundingBox();
-    assert.ok(box.height >= 52, `card ${i} altura confortável (${box.height}px)`);
+    assert.ok(box.height >= 34, `card ${i} altura compacta confortável (${box.height}px)`);
   }
-  console.log('PASS: sidebar — 3 cards, hrefs, target/rel, nomes, descrições, fallback de logo');
+  console.log('PASS: sidebar — 3 abas compactas, links oficiais, nomes e logos');
 
   // Hover: elevação + sombra dourada
   const first = cards.nth(0);
@@ -71,8 +59,8 @@ try {
   await modal.getByText('Empresas diferentes. Uma só visão.').waitFor();
   const sennaWeb = modal.getByRole('link', { name: 'Abrir site da Senna Cell X em nova aba' });
   assert.equal(await sennaWeb.getAttribute('href'), 'https://sennacellxuy.lovable.app');
-  assert.equal(await modal.getByRole('link', { name: 'Abrir Instagram da Grupo Reis X em nova aba' }).getAttribute('href'), 'https://www.instagram.com/gruporeisx/');
-  assert.equal(await modal.getByRole('link', { name: 'Abrir Instagram da Primeiro Passo X em nova aba' }).getAttribute('href'), 'https://www.instagram.com/primeiropassox/');
+  assert.equal(await modal.getByRole('link', { name: 'Abrir canal oficial de Grupo Reis X em nova aba' }).getAttribute('href'), 'https://www.instagram.com/gruporeisx/');
+  assert.equal(await modal.getByRole('link', { name: 'Abrir canal oficial de Primeiro Passo X em nova aba' }).getAttribute('href'), 'https://www.instagram.com/primeiropassox/');
   assert.equal(await modal.locator('.ecosystem-logo').count(), 3, 'logos no modal');
   await modal.screenshot({ path: 'artifacts/gx-ecosystem-modal.png' });
   await page.getByRole('button', { name: 'Fechar janela', exact: true }).click();
@@ -87,7 +75,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false, 'sem overflow mobile');
   const mBox = await page.locator('.ecosystem-card-main').first().boundingBox();
   const mCard = await page.locator('.ecosystem-card').first().boundingBox();
-  assert.ok(mBox.height >= 56 && mCard.width > 170, `toque confortável mobile (${mCard.width}x${mBox.height})`);
+  assert.ok(mBox.height >= 38 && mCard.width > 170, `toque confortável mobile (${mCard.width}x${mBox.height})`);
   await page.locator('.sidebar').screenshot({ path: 'artifacts/gx-ecosystem-mobile.png' });
   console.log('PASS: mobile — sem overflow, área de toque confortável');
 

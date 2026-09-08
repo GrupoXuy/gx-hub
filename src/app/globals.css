@@ -146,3 +146,22 @@
 .ecosystem-company-links>a:hover{border-color:#8a7647;background:#c7a66e1a;transform:translateY(-1px)}
 @media(hover:none){.ecosystem-go{opacity:.55}.ecosystem-card-main{min-height:60px}}
 @media(prefers-reduced-motion:reduce){.ecosystem-card,.ecosystem-card-main,.ecosystem-instagram,.ecosystem-company-links>a{transition:none}.ecosystem-card:hover,.ecosystem-company-links>a:hover{transform:none}}
+
+/* Restore compact ecosystem tabs while keeping their official links */
+.ecosystem-cards{gap:4px}
+.ecosystem-card{display:flex;align-items:center;border:0;border-radius:5px;background:transparent;box-shadow:none;transform:none}
+.ecosystem-card:hover{border-color:transparent;background:#202324;box-shadow:0 4px 14px rgba(0,0,0,.25),0 0 14px rgba(199,166,110,.06);transform:translateY(-1px)}
+.ecosystem-card-main.ecosystem-nav-item{height:38px;min-height:38px;flex:1;min-width:0;padding:0 7px;gap:8px;background:transparent;border:0;border-radius:5px;color:#a5a7a8;text-align:left;font-size:11.5px;font-weight:500}
+.ecosystem-card-main.ecosystem-nav-item:hover{background:transparent;color:#dfe1e2}
+.ecosystem-card-main.ecosystem-nav-item>svg{margin-left:auto;opacity:0;color:#b7a37a;transition:opacity .2s ease}
+.ecosystem-card:hover .ecosystem-card-main.ecosystem-nav-item>svg{opacity:1}
+.ecosystem-tab-link{width:28px;height:28px;display:grid;place-items:center;flex-shrink:0;margin-right:4px;border-left:1px solid #2a2d2e;border-radius:0 4px 4px 0;color:#777d80;transition:color .2s ease,background-color .2s ease}
+.ecosystem-tab-link:hover{color:#ddc08a;background:#c7a66e12}
+.ecosystem-tab-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.ecosystem-logo{width:25px!important;height:25px!important;border-radius:5px;background:#252829;border-color:#343839}
+.ecosystem-logo>img{width:100%;height:100%;object-fit:contain}
+.ecosystem-logo .company-nav-icon{width:100%;height:100%;border:0;border-radius:0;background:transparent}
+.ecosystem-intro>.ecosystem-logo{width:90px!important;height:90px!important;flex-shrink:0;border-radius:10px}
+.ecosystem-intro>.ecosystem-logo .company-nav-icon{font-size:30px}
+.ecosystem-companies>article>.ecosystem-logo{width:40px!important;height:40px!important}
+@media(max-width:760px){.ecosystem-card-main.ecosystem-nav-item{min-height:42px;height:42px}.ecosystem-tab-link{width:32px;height:32px}}
