@@ -1,0 +1,16 @@
+import { db } from "@/db";
+import { users, signals } from "@/db/schema";
+import { and, eq, gt } from "drizzle-orm";
+import { getMember, fail } from "@/lib/server";
+export async function POST(request: Request) {
+  try {
+    const me = await getMember();
+    if (!me || !me.callRoom) return Response.json({ error: "Nenhuma chamada ativa." }, { status: 403 });
+    const body = await request.json();
+    if (!body.payload || typeof body.payload !== "object" || JSON.stringify(body.payload).length > 64000 || (!body.payload.description && !body.payload.candidate)) return Response.json({ error: "Sinalização inválida." }, { status: 400 });
+    const [recipient] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, String(body.toId)), eq(users.callRoom, me.callRoom), eq(users.isDemo, false), gt(users.lastSeen, new Date(Date.now() - 25000))));
+    if (!recipient) return Response.json({ error: "A pessoa já saiu da sala." }, { status: 404 });
+    await db.insert(signals).values({ fromId: me.id, toId: recipient.id, roomId: me.callRoom, payload: body.payload });
+    return Response.json({ ok: true });
+  } catch (error) { return fail(error); }
+}
