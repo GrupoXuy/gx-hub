@@ -4,12 +4,31 @@ import { users, rooms, messages, meetings } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { DEFAULT_ME, DEMO_MEMBERS, ROOM_DATA } from "@/lib/workspace";
 
+const DDL_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS gx_rooms (id text PRIMARY KEY, name text NOT NULL, description text NOT NULL, kind text NOT NULL, capacity integer NOT NULL DEFAULT 8, color text NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS gx_users (id text PRIMARY KEY, name text NOT NULL, role text NOT NULL DEFAULT 'Membro do ecossistema', company text NOT NULL DEFAULT 'Grupo X', avatar text NOT NULL DEFAULT '', color text NOT NULL DEFAULT '#c7a66e', room_id text NOT NULL DEFAULT 'recepcao', status text NOT NULL DEFAULT 'available', x real NOT NULL DEFAULT 61, y real NOT NULL DEFAULT 73, is_demo boolean NOT NULL DEFAULT false, hand_raised boolean NOT NULL DEFAULT false, call_room text, mic_enabled boolean NOT NULL DEFAULT false, camera_enabled boolean NOT NULL DEFAULT false, last_seen timestamptz NOT NULL DEFAULT now())`,
+  `CREATE TABLE IF NOT EXISTS gx_messages (id text PRIMARY KEY, sender_id text NOT NULL REFERENCES gx_users(id), room_id text NOT NULL DEFAULT 'geral', content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())`,
+  `CREATE INDEX IF NOT EXISTS gx_messages_created_at_idx ON gx_messages (created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS gx_meetings (id text PRIMARY KEY, title text NOT NULL, description text NOT NULL DEFAULT '', room_id text NOT NULL REFERENCES gx_rooms(id), starts_at timestamptz NOT NULL, duration integer NOT NULL DEFAULT 30, organizer_id text NOT NULL REFERENCES gx_users(id), created_at timestamptz NOT NULL DEFAULT now())`,
+  `CREATE INDEX IF NOT EXISTS gx_meetings_starts_at_idx ON gx_meetings (starts_at)`,
+  `CREATE TABLE IF NOT EXISTS gx_signals (id serial PRIMARY KEY, from_id text NOT NULL, to_id text NOT NULL, room_id text NOT NULL, payload jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now())`,
+  `CREATE INDEX IF NOT EXISTS gx_signals_to_id_idx ON gx_signals (to_id, id)`,
+  `CREATE TABLE IF NOT EXISTS gx_invitations (id text PRIMARY KEY, created_by text NOT NULL REFERENCES gx_users(id), expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now())`,
+];
+
 let seedPromise: Promise<void> | undefined;
 export function seedWorkspace() {
   if (!seedPromise) seedPromise = seed().catch(error => { seedPromise = undefined; throw error; });
   return seedPromise;
 }
 async function seed() {
+  for (const statement of DDL_STATEMENTS) {
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "42P07") throw error;
+    }
+  }
   await db.insert(rooms).values(ROOM_DATA).onConflictDoNothing();
   await db.insert(users).values(DEMO_MEMBERS.map(member => ({ ...member, lastSeen: new Date(0) }))).onConflictDoNothing();
   const now = Date.now();
