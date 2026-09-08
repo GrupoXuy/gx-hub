@@ -1,13 +1,19 @@
 export type View = "office" | "rooms" | "team" | "agenda";
 export type Member = {
   id: string; name: string; role: string; company: string; avatar: string; color: string;
-  roomId: string; status: string; x: number; y: number; isDemo: boolean; handRaised: boolean;
+  roomId: string; status: string; x: number; y: number; isDemo: boolean; isAdmin: boolean;
+  accessToken?: string | null; handRaised: boolean;
   callRoom: string | null; micEnabled: boolean; cameraEnabled: boolean; lastSeen?: string;
+};
+export type RosterEntry = {
+  id: string; name: string; role: string; company: string; avatar: string; color: string;
+  isAdmin: boolean; online: boolean;
 };
 export type Room = { id: string; name: string; description: string; kind: string; capacity: number; color: string };
 export type Message = { id: string; senderId: string; roomId: string; content: string; createdAt: string; sender: Member };
 export type Meeting = { id: string; title: string; description: string; roomId: string; startsAt: string; duration: number; organizerId: string };
-export type Workspace = { me: Member; members: Member[]; rooms: Room[]; messages: Message[]; meetings: Meeting[] };
+export type Workspace = { me: Member; members: Member[]; team: Member[]; rooms: Room[]; messages: Message[]; meetings: Meeting[] };
+export type AuthNeeded = { needsAuth: true; users: RosterEntry[]; inviteRequired: boolean };
 export const ROOM_DATA: Room[] = [
   { id: "recepcao", name: "Recepção", description: "O começo de todas as boas conexões. Chegue, encontre a equipe e sinta-se em casa.", kind: "reception", capacity: 20, color: "#c7a66e" },
   { id: "coworking", name: "Coworking", description: "Ideias lado a lado. Seu espaço para trabalhar, colaborar e fazer acontecer.", kind: "work", capacity: 12, color: "#8faaa0" },
@@ -16,18 +22,20 @@ export const ROOM_DATA: Room[] = [
   { id: "diretoria", name: "Sala da diretoria", description: "Foco no que importa. Um ambiente reservado para as conversas que transformam.", kind: "private", capacity: 6, color: "#9c93b5" },
 ];
 const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=96&h=96&q=80`;
-const base = { isDemo: true, handRaised: false, callRoom: null, micEnabled: false, cameraEnabled: false };
-export const DEMO_MEMBERS: Member[] = [
-  { ...base, id: "demo-ana", name: "Ana Beatriz", role: "Marketing & Comunicação", company: "Grupo X", avatar: photo("photo-1494790108377-be9c29b29330"), color: "#b88f78", roomId: "estrategia", status: "busy", x: 39, y: 43 },
-  { ...base, id: "demo-lucas", name: "Lucas Martins", role: "Gestão Comercial", company: "Senna Cell X", avatar: photo("photo-1500648767791-00dcc994a43e"), color: "#7295a1", roomId: "coworking", status: "available", x: 63, y: 40 },
-  { ...base, id: "demo-mariana", name: "Mariana Costa", role: "Gestão de Operações", company: "Grupo X", avatar: photo("photo-1534528741775-53994a69daeb"), color: "#b29bc3", roomId: "coworking", status: "available", x: 72, y: 49 },
-  { ...base, id: "demo-rafael", name: "Rafael Lima", role: "Tecnologia & Inovação", company: "Senna Cell X", avatar: photo("photo-1506794778202-cad84cf45f1d"), color: "#839c83", roomId: "lounge", status: "available", x: 36, y: 67 },
-  { ...base, id: "demo-camila", name: "Camila Rocha", role: "Pessoas & Cultura", company: "Primeiro Passo X", avatar: photo("photo-1517841905240-472988babdf9"), color: "#c58b77", roomId: "lounge", status: "away", x: 27, y: 59 },
-];
 export const DEFAULT_ME: Member = {
-  ...base, id: "local", name: "Henrique Senna", role: "Fundador & CEO", company: "Grupo X",
-  avatar: photo("photo-1472099645785-5658abf4ff4e"), color: "#c7a66e", roomId: "recepcao", status: "available", x: 61, y: 73, isDemo: false,
+  id: "local", name: "Henrique Senna", role: "Fundador & CEO", company: "Grupo X",
+  avatar: photo("photo-1472099645785-5658abf4ff4e"), color: "#c7a66e", roomId: "recepcao",
+  status: "available", x: 61, y: 73, isDemo: false, isAdmin: false, accessToken: null,
+  handRaised: false, callRoom: null, micEnabled: false, cameraEnabled: false,
 };
+export const AVATAR_COLORS = [
+  { value: "#c7a66e", name: "Dourado Grupo X" },
+  { value: "#839c83", name: "Verde sálvia" },
+  { value: "#7295a1", name: "Azul oceano" },
+  { value: "#b29bc3", name: "Lilás" },
+  { value: "#c58b77", name: "Terracota" },
+  { value: "#c4c9ca", name: "Prata" },
+];
 export const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   recepcao: { x: 61, y: 73 }, coworking: { x: 61, y: 47 }, estrategia: { x: 42, y: 48 }, lounge: { x: 36, y: 68 }, diretoria: { x: 48, y: 39 },
 };
@@ -42,9 +50,17 @@ export const STATUS_LABELS: Record<string, string> = { available: "Disponível",
 export function initials(name: string) { return name.split(" ").filter(Boolean).map(n => n[0]).slice(0, 2).join(""); }
 export function timeLabel(date: string | Date) { return new Date(date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
 export function dayLabel(date: string | Date) { return new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }); }
+export function isOnline(lastSeen?: string | Date | null) {
+  if (!lastSeen) return false;
+  return Date.now() - new Date(lastSeen).getTime() < 60000;
+}
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || "Não foi possível concluir. Tente novamente.");
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(body.error || "Não foi possível concluir. Tente novamente.") as Error & { status?: number; data?: unknown };
+    error.status = response.status; error.data = body;
+    throw error;
+  }
   return body as T;
 }

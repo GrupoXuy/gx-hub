@@ -5,6 +5,7 @@ const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:3000';
 mkdirSync('artifacts', { recursive: true });
 const testUsers = [];
 const saveUsers = () => writeFileSync('artifacts/test-users.json', JSON.stringify(testUsers));
+const track = (id) => { if (id && id !== 'henrique-senna' && !testUsers.includes(id)) { testUsers.push(id); saveUsers(); } };
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });
 const errors = [];
 const contexts = [];
@@ -26,10 +27,40 @@ async function eventually(fn, timeout = 15000) { const start = Date.now(); let l
 async function closeModal(p = page) { await p.getByRole('button', { name: 'Fechar janela', exact: true }).click(); }
 try {
   assert.equal((await page.request.get(`${base}/api/health`)).status(), 200);
+  // Auto-limpeza: remove sobras de execuções abortadas antes de começar.
+  const purgeCtx = await newContext(); const purgeApi = purgeCtx.request;
+  const g0 = await (await purgeApi.get(`${base}/api/workspace`)).json();
+  if (g0.users) {
+    const h0 = g0.users.find(u => u.name === 'Henrique Senna');
+    if (h0) {
+      await purgeApi.post(`${base}/api/auth/login`, { data: { userId: h0.id } });
+      for (const u of g0.users.filter(u => u.name.toLowerCase().startsWith('teste') || u.name === 'Usuario Temporario')) {
+        await purgeApi.delete(`${base}/api/users?id=${u.id}`);
+      }
+    }
+  }
+  // Sem sessão: a API exige autenticação e expõe a lista pública de acesso.
+  const unauth = await page.request.get(`${base}/api/workspace`);
+  assert.equal(unauth.status(), 401);
+  const gate = await unauth.json();
+  assert.equal(gate.needsAuth, true);
+  assert.ok(gate.users.some(u => u.name === 'Henrique Senna' && u.isAdmin), 'Henrique admin na lista de acesso');
+  assert.equal(gate.users.filter(u => u.name.toLowerCase().startsWith('teste')).length, 0, 'sem usuarios de teste');
+  assert.ok(!('accessToken' in (gate.users[0] || {})), 'lista publica sem tokens');
   await page.goto(base, { waitUntil: 'networkidle' });
-  await page.getByText('Conexão estável', { exact: true }).waitFor();
-  const initial = await state(); testUsers.push(initial.me.id); saveUsers();
-  assert.equal(initial.rooms.length, 5); assert.equal(initial.members.filter(m => m.isDemo).length, 5);
+  await page.getByRole('heading', { name: 'Seu escritório, sem fronteiras.' }).waitFor();
+  await page.screenshot({ path: 'artifacts/gx-auth.png' });
+  // Entrar como Henrique pela tela de acesso.
+  await page.locator('.auth-user').filter({ hasText: 'Henrique Senna' }).click();
+  await page.getByText('Conexão estável', { exact: true }).waitFor({ timeout: 15000 });
+  const initial = await state();
+  assert.equal(initial.me.name, 'Henrique Senna');
+  assert.equal(initial.me.isAdmin, true);
+  assert.equal(initial.rooms.length, 5);
+  assert.equal(initial.team.filter(m => m.isDemo).length, 0, 'nenhum usuario demo');
+  assert.equal(initial.team.filter(m => m.name.toLowerCase().startsWith('teste')).length, 0, 'nenhum teste na equipe');
+  assert.ok(!('accessToken' in initial.me), 'workspace sem vazar token');
+  console.log('PASS: auth gate, admin login and clean roster');
   await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(1200);
   await page.screenshot({ path: 'artifacts/gx-desktop.png', fullPage: true });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false);
@@ -44,13 +75,49 @@ try {
   await page.locator('.nav-item').filter({ hasText: 'Escritório virtual' }).click();
   console.log('PASS: desktop/mobile layout and navigation');
 
+  // Gerenciamento de usuários (admin): cadastrar via interface.
+  await page.locator('.sidebar-manage').click();
+  await page.getByRole('button', { name: 'Cadastrar usuário', exact: true }).click();
+  await page.getByLabel('Nome completo', { exact: true }).fill('Teste GX A');
+  await page.getByLabel('Cargo ou área', { exact: true }).fill('Validação de experiência');
+  await page.getByRole('button', { name: 'Cadastrar na equipe', exact: true }).click();
+  await page.getByText('Link de acesso pessoal criado:').waitFor();
+  assert.ok((await state()).team.some(m => m.name === 'Teste GX A'));
+  await closeModal();
+  // CRUD completo via API em contexto isolado (admin).
+  const contextC = await newContext(); const adminApi = contextC.request;
+  const gateC = await (await adminApi.get(`${base}/api/workspace`)).json();
+  const henriqueId = gateC.users.find(u => u.name === 'Henrique Senna').id;
+  assert.equal((await adminApi.post(`${base}/api/auth/login`, { data: { userId: henriqueId } })).status(), 200);
+  const created = await (await adminApi.post(`${base}/api/users`, { data: { name: 'Usuario Temporario', role: 'QA', company: 'Grupo X' } })).json();
+  assert.ok(created.member.accessToken, 'cadastro retorna link pessoal');
+  const listed = await (await adminApi.get(`${base}/api/users`)).json();
+  assert.ok(listed.team.some(m => m.name === 'Usuario Temporario'));
+  assert.equal((await adminApi.patch(`${base}/api/users`, { data: { id: created.member.id, role: 'QA Senior' } })).status(), 200);
+  const dup = await adminApi.post(`${base}/api/users`, { data: { name: 'Usuario Temporario', role: 'QA', company: 'Grupo X' } });
+  assert.equal(dup.status(), 409, 'nome duplicado rejeitado');
+  assert.equal((await adminApi.delete(`${base}/api/users?id=${created.member.id}`)).status(), 200);
+  const relisted = await (await adminApi.get(`${base}/api/users`)).json();
+  assert.ok(!relisted.team.some(m => m.name === 'Usuario Temporario'));
+  const selfDel = await adminApi.delete(`${base}/api/users?id=${henriqueId}`);
+  assert.equal(selfDel.status(), 400, 'admin nao remove a si mesmo');
+  console.log('PASS: user management UI create + full API CRUD with guards');
+
+  // Trocar de identidade: sair e entrar como Teste GX A.
+  await page.getByRole('button', { name: 'Sair do escritório', exact: true }).click();
+  await page.getByRole('heading', { name: 'Seu escritório, sem fronteiras.' }).waitFor({ timeout: 15000 });
+  await page.locator('.auth-user').filter({ hasText: 'Teste GX A' }).click();
+  await page.getByText('Conexão estável', { exact: true }).waitFor({ timeout: 15000 });
+  track((await state()).me.id);
+  const forbidden = await page.request.post(`${base}/api/users`, { data: { name: 'Invasor', role: 'x', company: 'y' } });
+  assert.equal(forbidden.status(), 403, 'nao-admin bloqueado no cadastro');
+  console.log('PASS: logout, identity switch and admin-only guard');
+
   await page.getByRole('button', { name: 'Personalizar avatar', exact: true }).click();
-  await page.getByLabel('Seu nome', { exact: true }).fill('Teste GX A');
   await page.getByLabel('Cargo ou área', { exact: true }).fill('Validação de experiência');
   await page.getByRole('button', { name: 'Azul oceano', exact: true }).click();
   await page.getByRole('button', { name: 'Salvar meu avatar', exact: true }).click();
-  await eventually(async () => (await state()).me.name === 'Teste GX A');
-  assert.equal((await state()).me.color, '#7295a1');
+  await eventually(async () => (await state()).me.color === '#7295a1');
   assert.equal((await state()).me.avatar, '');
   console.log('PASS: persistent profile and avatar');
 
@@ -94,12 +161,22 @@ try {
   pageB.on('pageerror', error => errors.push(error.message));
   pageB.on('console', msg => { if (msg.type() === 'warning' && msg.text().includes('WebRTC')) console.log('RTC B WARNING:', msg.text()); });
   await pageB.goto(inviteUrl, { waitUntil: 'networkidle' });
-  const second = await state(pageB); testUsers.push(second.me.id); saveUsers();
-  await pageB.getByRole('heading', { name: 'Seu lugar na equipe está aqui.' }).waitFor();
+  await pageB.getByRole('heading', { name: 'Seu escritório, sem fronteiras.' }).waitFor();
+  await pageB.getByRole('button', { name: 'Primeiro acesso', exact: true }).click();
   await pageB.getByLabel('Seu nome', { exact: true }).fill('Teste GX B');
-  await pageB.getByRole('button', { name: 'Entrar no escritório', exact: true }).click();
+  await pageB.getByLabel('Cargo ou área', { exact: true }).fill('Validação remota');
+  await pageB.getByRole('button', { name: 'Cadastrar e entrar', exact: true }).click();
+  await pageB.getByText('Conexão estável', { exact: true }).waitFor({ timeout: 15000 });
+  track((await state(pageB)).me.id);
   await eventually(async () => (await state()).members.some(m => m.name === 'Teste GX B'));
-  console.log('PASS: invitation creation, clipboard, onboarding and live presence');
+  // Link pessoal: acesso direto sem escolher nome.
+  const contextD = await newContext(); const pageD = await contextD.newPage();
+  const teamD = await (await adminApi.get(`${base}/api/users`)).json();
+  const tokenB = teamD.team.find(m => m.name === 'Teste GX B').accessToken;
+  await pageD.goto(`${base}/?acesso=${tokenB}`, { waitUntil: 'networkidle' });
+  await pageD.getByText('Conexão estável', { exact: true }).waitFor({ timeout: 15000 });
+  assert.equal((await state(pageD)).me.name, 'Teste GX B');
+  console.log('PASS: invitation, self-registration, personal link and live presence');
 
   await page.locator('.nav-item').filter({ hasText: 'Escritório virtual' }).click();
   const message = `Conectados para construir. 🚀 ${Date.now()}`;
@@ -107,9 +184,9 @@ try {
   await page.getByRole('button', { name: 'Enviar mensagem', exact: true }).click();
   await pageB.locator('.message-body').filter({ hasText: message }).waitFor({ timeout: 12000 });
   await page.keyboard.press('Control+k');
-  await page.getByRole('textbox', { name: 'Buscar no workspace', exact: true }).fill('Ana');
-  await page.locator('.search-results').getByRole('button').filter({ hasText: 'Ana Beatriz' }).click();
-  await page.getByText('Perfil de demonstração', { exact: true }).waitFor(); await closeModal();
+  await page.getByRole('textbox', { name: 'Buscar no workspace', exact: true }).fill('Henrique');
+  await page.locator('.search-results').getByRole('button').filter({ hasText: 'Henrique Senna' }).click();
+  await page.getByRole('dialog').getByText('Fundador & CEO').waitFor(); await closeModal();
   const box = await page.locator('.office-world').boundingBox();
   await page.mouse.click(box.x + box.width * .55, box.y + box.height * .70);
   await eventually(async () => Math.abs((await state()).me.x - 55) < 1);

@@ -1,10 +1,13 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, DEFAULT_ME, DEMO_MEMBERS, ROOM_DATA, type Workspace, type Member } from "@/lib/workspace";
+import { api, DEFAULT_ME, ROOM_DATA, type AuthNeeded, type RosterEntry, type Workspace, type Member } from "@/lib/workspace";
 export function useWorkspace() {
-  const [data, setData] = useState<Workspace>({ me: DEFAULT_ME, members: [DEFAULT_ME, ...DEMO_MEMBERS], rooms: ROOM_DATA, messages: [], meetings: [] });
+  const [data, setData] = useState<Workspace>({ me: DEFAULT_ME, members: [], team: [], rooms: ROOM_DATA, messages: [], meetings: [] });
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
+  const [authNeeded, setAuthNeeded] = useState(false);
+  const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [inviteRequired, setInviteRequired] = useState(true);
   const fetching = useRef(false);
   const mutating = useRef(0);
   const refresh = useCallback(async () => {
@@ -13,8 +16,17 @@ export function useWorkspace() {
     try {
       const next = await api<Workspace>("/api/workspace");
       setData(previous => mutating.current ? { ...next, me: previous.me, members: next.members.map(m => m.id === previous.me.id ? previous.me : m) } : next);
-      setConnected(true); setError("");
-    } catch (err) { setConnected(false); setError(err instanceof Error ? err.message : "Não foi possível conectar ao escritório."); }
+      setConnected(true); setError(""); setAuthNeeded(false);
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      const payload = (err as { data?: AuthNeeded }).data;
+      if (status === 401 && payload && typeof payload === "object" && "needsAuth" in payload) {
+        setConnected(true); setError(""); setAuthNeeded(true);
+        setRoster(payload.users || []); setInviteRequired(payload.inviteRequired !== false);
+      } else {
+        setConnected(false); setError(err instanceof Error ? err.message : "Não foi possível conectar ao escritório.");
+      }
+    }
     finally { fetching.current = false; }
   }, []);
   useEffect(() => {
@@ -33,5 +45,25 @@ export function useWorkspace() {
       return me;
     } finally { mutating.current--; if (mutating.current === 0) void refresh(); }
   }, [refresh]);
-  return { data, setData, connected, error, refresh, updateMe };
+  const login = useCallback(async (userId: string) => {
+    await api("/api/auth/login", { method: "POST", body: JSON.stringify({ userId }) });
+    setAuthNeeded(false);
+    await refresh();
+  }, [refresh]);
+  const claim = useCallback(async (token: string) => {
+    await api("/api/auth/claim", { method: "POST", body: JSON.stringify({ token }) });
+    setAuthNeeded(false);
+    await refresh();
+  }, [refresh]);
+  const register = useCallback(async (payload: { name: string; role: string; company: string; color?: string; inviteToken: string }) => {
+    await api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
+    setAuthNeeded(false);
+    await refresh();
+  }, [refresh]);
+  const logout = useCallback(async () => {
+    try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+    setAuthNeeded(true);
+    await refresh();
+  }, [refresh]);
+  return { data, setData, connected, error, refresh, updateMe, authNeeded, roster, inviteRequired, login, claim, register, logout };
 }

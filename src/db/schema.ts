@@ -12,6 +12,8 @@ export const users = pgTable("gx_users", {
   x: real("x").notNull().default(61),
   y: real("y").notNull().default(73),
   isDemo: boolean("is_demo").notNull().default(false),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  accessToken: text("access_token"),
   handRaised: boolean("hand_raised").notNull().default(false),
   callRoom: text("call_room"),
   micEnabled: boolean("mic_enabled").notNull().default(false),

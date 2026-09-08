@@ -1,22 +1,40 @@
 import { db } from "@/db";
 import { users, rooms, messages, meetings } from "@/db/schema";
 import { and, desc, eq, gt, or, asc } from "drizzle-orm";
-import { ensureMember, getMember, seedWorkspace, fail } from "@/lib/server";
-import { ROOM_DATA } from "@/lib/workspace";
+import { getMember, seedWorkspace, fail, publicMember } from "@/lib/server";
+import { ROOM_DATA, type RosterEntry } from "@/lib/workspace";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     await seedWorkspace();
-    const session = await ensureMember();
+    const session = await getMember();
+    if (!session) {
+      const roster = await db.select().from(users).where(eq(users.isDemo, false)).orderBy(asc(users.name));
+      const cutoff = Date.now() - 60000;
+      const list: RosterEntry[] = roster.map(member => ({
+        id: member.id, name: member.name, role: member.role || "Membro do ecossistema",
+        company: member.company || "Grupo X", avatar: member.avatar, color: member.color,
+        isAdmin: member.isAdmin, online: new Date(member.lastSeen).getTime() > cutoff,
+      }));
+      return Response.json({ needsAuth: true, users: list, inviteRequired: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    }
     const [me] = await db.update(users).set({ lastSeen: new Date() }).where(eq(users.id, session.id)).returning();
-    const [members, roomList, chat, events] = await Promise.all([
-      db.select().from(users).where(or(eq(users.isDemo, true), gt(users.lastSeen, new Date(Date.now() - 45000)), eq(users.id, me.id))).orderBy(asc(users.name)),
+    const [members, team, roomList, chat, events] = await Promise.all([
+      db.select().from(users).where(and(eq(users.isDemo, false), or(gt(users.lastSeen, new Date(Date.now() - 45000)), eq(users.id, me.id)))).orderBy(asc(users.name)),
+      db.select().from(users).where(eq(users.isDemo, false)).orderBy(asc(users.name)),
       db.select().from(rooms),
       db.select({ id: messages.id, senderId: messages.senderId, roomId: messages.roomId, content: messages.content, createdAt: messages.createdAt, sender: users }).from(messages).innerJoin(users, eq(messages.senderId, users.id)).orderBy(desc(messages.createdAt)).limit(100),
       db.select().from(meetings).where(gt(meetings.startsAt, new Date(Date.now() - 86400000))).orderBy(asc(meetings.startsAt)).limit(100),
     ]);
-    return Response.json({ me, members, rooms: ROOM_DATA.map(r => roomList.find(item => item.id === r.id) || r), messages: chat.reverse(), meetings: events }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({
+      me: publicMember(me),
+      members: members.map(publicMember),
+      team: team.map(publicMember),
+      rooms: ROOM_DATA.map(r => roomList.find(item => item.id === r.id) || r),
+      messages: chat.reverse().map(message => ({ ...message, sender: publicMember(message.sender) })),
+      meetings: events,
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return fail(error); }
 }
 
@@ -31,6 +49,10 @@ export async function PATCH(request: Request) {
         if (typeof body[field] !== "string" || body[field].trim().length < 2 || body[field].trim().length > 80) return Response.json({ error: "Preencha nome, cargo e empresa com 2 a 80 caracteres." }, { status: 400 });
         patch[field] = body[field].trim();
       }
+    }
+    if (body.name !== undefined) {
+      const [taken] = await db.select({ id: users.id }).from(users).where(and(eq(users.isDemo, false), eq(users.name, patch.name as string))).limit(1);
+      if (taken && taken.id !== me.id) return Response.json({ error: "Este nome já está em uso pela equipe. Escolha outro." }, { status: 409 });
     }
     if (body.avatar === "") patch.avatar = "";
     if (body.color !== undefined) {
@@ -49,6 +71,6 @@ export async function PATCH(request: Request) {
     if (typeof body.y === "number" && Number.isFinite(body.y)) patch.y = Math.max(24, Math.min(87, body.y));
     if (typeof body.handRaised === "boolean") patch.handRaised = body.handRaised;
     const [updated] = await db.update(users).set(patch).where(and(eq(users.id, me.id), eq(users.isDemo, false))).returning();
-    return Response.json(updated);
+    return Response.json(publicMember(updated));
   } catch (error) { return fail(error); }
 }

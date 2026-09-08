@@ -31,11 +31,11 @@ O arquivo `.env` com segredos nunca é enviado ao GitHub (protegido pelo `.gitig
 
 Next.js App Router, React, TypeScript, Drizzle ORM e PostgreSQL. A conexão usa `DATABASE_URL` e o cliente de `src/db/index.ts`. As tabelas estão em `src/db/schema.ts`.
 
-O ambiente da plataforma prepara o PostgreSQL automaticamente. Após o bootstrap, aplique o schema com `npx drizzle-kit push`. Os dados ilustrativos são inicializados de forma idempotente pela API do workspace.
+O ambiente da plataforma prepara o PostgreSQL automaticamente. Após o bootstrap, aplique o schema com `npx drizzle-kit push`. As salas e a conta administradora (Henrique Senna) são inicializadas de forma idempotente pela API do workspace.
 
 ## Chamadas em produção
 
-Câmera, microfone e compartilhamento de tela exigem HTTPS (ou localhost). Cada pessoa deve abrir o workspace em uma sessão própria e entrar no mesmo ambiente de chamada. Os perfis demonstrativos não entram em chamadas.
+Câmera, microfone e compartilhamento de tela exigem HTTPS (ou localhost). Cada pessoa cadastrada abre o workspace em uma sessão própria e entra no mesmo ambiente de chamada.
 
 O transporte de mídia é ponto a ponto e a sinalização passa por APIs autenticadas pela sessão de visitante. STUN é configurado por padrão. Para participantes atrás de firewalls corporativos ou NATs restritivos, configure um servidor TURN usando variáveis do ambiente:
 
@@ -49,7 +49,7 @@ Não coloque segredos no código ou em variáveis `NEXT_PUBLIC_*`. As configura�
 
 Este workspace utiliza sessões de visitante com cookie HTTP-only e SameSite=Lax. Os convites são links compartilháveis; não há login corporativo nem controle organizacional de documentos. Não utilize o ambiente demonstrativo para informações sensíveis. Para um escritório privado, conecte um provedor corporativo de identidade e políticas de acesso antes de disponibilizar dados empresariais.
 
-Cinco perfis, três mensagens de boas-vindas e dois encontros iniciais apresentam a experiência. Seus detalhes os identificam como ilustrativos. Novos participantes, mensagens e reuniões são reais e persistidos no banco.
+Somente pessoas cadastradas entram no escritório: cada uma escolhe seu nome na tela de acesso ou usa seu link pessoal. O administrador cadastra, edita e remove usuários na aba Equipe (Gerenciar usuários), e convites permitem o autocadastro. Novos participantes, mensagens e reuniões são reais e persistidos no banco.
 
 ## Validação
 

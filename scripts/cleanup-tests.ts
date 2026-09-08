@@ -5,7 +5,7 @@ import { inArray, or } from "drizzle-orm";
 import { existsSync, readFileSync } from "node:fs";
 async function main() {
   if (!existsSync("artifacts/test-users.json")) return;
-  const ids = JSON.parse(readFileSync("artifacts/test-users.json", "utf8")) as string[];
+  const ids = (JSON.parse(readFileSync("artifacts/test-users.json", "utf8")) as string[]).filter(id => id !== "henrique-senna");
   if (!ids.length) return;
   if (ids.some(id => !/^[a-f0-9-]{36}$/.test(id))) throw new Error("Invalid test user ID");
   await db.transaction(async tx => {
