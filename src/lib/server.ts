@@ -2,13 +2,19 @@ import { cookies } from "next/headers";
 import { db } from "@/db";
 import { users, rooms, messages, meetings, invitations, signals } from "@/db/schema";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { DEFAULT_ME, ROOM_DATA } from "@/lib/workspace";
+
+export const HENRIQUE_EMAIL = "carneiroluiz1@hotmail.com";
+const HENRIQUE_DEFAULT_PASSWORD = "255914Lh@";
 
 const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS gx_rooms (id text PRIMARY KEY, name text NOT NULL, description text NOT NULL, kind text NOT NULL, capacity integer NOT NULL DEFAULT 8, color text NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS gx_users (id text PRIMARY KEY, name text NOT NULL, role text NOT NULL DEFAULT 'Membro do ecossistema', company text NOT NULL DEFAULT 'Grupo X', avatar text NOT NULL DEFAULT '', color text NOT NULL DEFAULT '#c7a66e', room_id text NOT NULL DEFAULT 'recepcao', status text NOT NULL DEFAULT 'available', x real NOT NULL DEFAULT 61, y real NOT NULL DEFAULT 73, is_demo boolean NOT NULL DEFAULT false, is_admin boolean NOT NULL DEFAULT false, access_token text, hand_raised boolean NOT NULL DEFAULT false, call_room text, mic_enabled boolean NOT NULL DEFAULT false, camera_enabled boolean NOT NULL DEFAULT false, last_seen timestamptz NOT NULL DEFAULT now())`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS access_token text`,
+  `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS email text`,
+  `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS password_hash text`,
   `CREATE TABLE IF NOT EXISTS gx_messages (id text PRIMARY KEY, sender_id text NOT NULL REFERENCES gx_users(id), room_id text NOT NULL DEFAULT 'geral', content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())`,
   `CREATE INDEX IF NOT EXISTS gx_messages_created_at_idx ON gx_messages (created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS gx_meetings (id text PRIMARY KEY, title text NOT NULL, description text NOT NULL DEFAULT '', room_id text NOT NULL REFERENCES gx_rooms(id), starts_at timestamptz NOT NULL, duration integer NOT NULL DEFAULT 30, organizer_id text NOT NULL REFERENCES gx_users(id), created_at timestamptz NOT NULL DEFAULT now())`,
@@ -22,8 +28,8 @@ export function randomToken() {
   return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
 
-export function publicMember<T extends { accessToken?: string | null }>(member: T): Omit<T, "accessToken"> {
-  const { accessToken: _drop, ...rest } = member;
+export function publicMember<T extends { accessToken?: string | null; passwordHash?: string | null; email?: string | null }>(member: T): Omit<T, "accessToken" | "passwordHash" | "email"> {
+  const { accessToken: _dropToken, passwordHash: _dropHash, email: _dropEmail, ...rest } = member;
   return rest;
 }
 
@@ -96,16 +102,23 @@ async function deduplicateHenrique() {
 
 async function ensureHenriqueAdmin() {
   const [existing] = await db.select().from(users).where(and(eq(users.name, "Henrique Senna"), eq(users.isDemo, false))).limit(1);
+  const passwordHash = await bcrypt.hash(HENRIQUE_DEFAULT_PASSWORD, 10);
   if (!existing) {
     await db.insert(users).values({
       id: "henrique-senna", name: "Henrique Senna", role: "Fundador & CEO", company: "Grupo X",
       avatar: DEFAULT_ME.avatar, color: "#c7a66e", roomId: "recepcao", status: "available",
-      x: 61, y: 73, isDemo: false, isAdmin: true, accessToken: randomToken(), lastSeen: new Date(0),
+      x: 61, y: 73, isDemo: false, isAdmin: true, email: HENRIQUE_EMAIL, passwordHash,
+      accessToken: randomToken(), lastSeen: new Date(0),
     }).onConflictDoNothing();
     return;
   }
-  if (!existing.isAdmin || !existing.accessToken) {
-    await db.update(users).set({ isAdmin: true, ...(existing.accessToken ? {} : { accessToken: randomToken() }) }).where(eq(users.id, existing.id));
+  const patch: Partial<typeof users.$inferInsert> = {};
+  if (!existing.isAdmin) patch.isAdmin = true;
+  if (!existing.accessToken) patch.accessToken = randomToken();
+  if (existing.email !== HENRIQUE_EMAIL) patch.email = HENRIQUE_EMAIL;
+  if (!existing.passwordHash) patch.passwordHash = passwordHash;
+  if (Object.keys(patch).length) {
+    await db.update(users).set(patch).where(eq(users.id, existing.id));
   }
 }
 
@@ -135,6 +148,28 @@ export function validProfileText(value: unknown, min = 2, max = 80) {
 
 export function validColor(value: unknown) {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+}
+
+export function validEmail(value: unknown) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim()) && value.trim().length <= 120;
+}
+
+export function validPassword(value: unknown) {
+  return typeof value === "string" && value.length >= 8 && value.length <= 200;
+}
+
+export function verifyPassword(password: string, hash: string | null | undefined) {
+  if (!hash) return Promise.resolve(false);
+  return bcrypt.compare(password, hash);
+}
+
+export function hashPassword(password: string) {
+  return bcrypt.hash(password, 10);
+}
+
+export function stripSecrets<T extends { passwordHash?: string | null }>(member: T): Omit<T, "passwordHash"> {
+  const { passwordHash: _drop, ...rest } = member;
+  return rest;
 }
 
 export function fail(error: unknown, message = "O workspace está temporariamente indisponível. Tente novamente.") {

@@ -23,7 +23,7 @@ const HEADINGS: Record<View, { eyebrow: string; title: string; description: stri
 };
 
 export default function WorkspaceApp() {
-  const { data, setData, connected, error, refresh, updateMe, authNeeded, roster, login, claim, register, logout } = useWorkspace();
+  const { data, setData, connected, error, refresh, updateMe, authNeeded, roster, login, loginEmail, claim, register, saveCredentials, logout } = useWorkspace();
   const [view, setView] = useState<View>("office"); const [activeRoom, setActiveRoom] = useState("all");
   const [dialog, setDialog] = useState<Dialog>(null); const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false); const [notificationsRead, setNotificationsRead] = useState(false);
@@ -104,7 +104,7 @@ export default function WorkspaceApp() {
   const findMember = (id: string) => data.team.find(m => m.id === id) || data.members.find(m => m.id === id);
 
   if (authNeeded) {
-    return <><AuthGate roster={roster} inviteToken={inviteToken} accessToken={accessToken} onLogin={login} onClaim={claim} onRegister={register} />
+    return <><AuthGate roster={roster} inviteToken={inviteToken} accessToken={accessToken} onLogin={login} onLoginEmail={loginEmail} onClaim={claim} onRegister={register} />
       {toast && <div className="toast" key={toast.key} role="status"><span><Info size={18} /></span><p>{toast.message}</p><button aria-label="Fechar aviso" onClick={() => setToast(null)}><X size={16} /></button></div>}</>;
   }
 
@@ -128,7 +128,7 @@ export default function WorkspaceApp() {
       {view === "agenda" && <AgendaView data={data} onMeeting={showMeeting} onSchedule={() => setDialog({ type: "schedule" })} />}
       <footer className="workspace-footer"><span><span className="footer-x">X</span>Um ecossistema. Infinitas possibilidades.</span><span>Feito para aproximar.<Sparkles size={11} /></span></footer>
     </main></div>
-    {dialog?.type === "profile" && <ProfileDialog me={data.me} onSave={saveProfile} onClose={close} />}
+    {dialog?.type === "profile" && <ProfileDialog me={data.me} onSave={saveProfile} onSaveCredentials={data.me.isAdmin ? saveCredentials : undefined} onClose={close} />}
     {dialog?.type === "invite" && <InviteDialog roomId={call.roomId} onClose={close} />}
     {dialog?.type === "users" && <UsersDialog me={data.me} onChanged={() => void refresh()} notify={notify} onClose={close} />}
     {dialog?.type === "schedule" && <ScheduleDialog rooms={data.rooms} onSaved={() => { close(); void refresh(); notify("Reunião agendada. Mais um espaço para construir juntos."); }} onClose={close} />}

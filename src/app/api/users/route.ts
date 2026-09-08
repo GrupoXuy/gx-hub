@@ -14,8 +14,10 @@ export async function GET() {
     const me = await getMember();
     if (!me) return Response.json({ error: "Entre no escritório para ver a equipe." }, { status: 401 });
     const team = await db.select().from(users).where(eq(users.isDemo, false)).orderBy(asc(users.name));
-    if (me.isAdmin) return Response.json({ team });
-    return Response.json({ team: team.map(({ accessToken: _drop, ...rest }) => rest) });
+    if (me.isAdmin) {
+      return Response.json({ team: team.map(({ passwordHash: _dropHash, email: _dropEmail, ...rest }) => rest) });
+    }
+    return Response.json({ team: team.map(({ accessToken: _dropToken, passwordHash: _dropHash, email: _dropEmail, ...rest }) => rest) });
   } catch (error) { return fail(error); }
 }
 

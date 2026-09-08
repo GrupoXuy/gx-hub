@@ -55,6 +55,14 @@ export function useWorkspace() {
     setAuthNeeded(false);
     await refresh();
   }, [refresh]);
+  const loginEmail = useCallback(async (email: string, password: string) => {
+    await api("/api/auth/password", { method: "POST", body: JSON.stringify({ email, password }) });
+    setAuthNeeded(false);
+    await refresh();
+  }, [refresh]);
+  const saveCredentials = useCallback(async (email: string, password: string) => {
+    await api("/api/auth/credentials", { method: "PATCH", body: JSON.stringify({ email, password }) });
+  }, []);
   const register = useCallback(async (payload: { name: string; role: string; company: string; color?: string; inviteToken: string }) => {
     await api("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
     setAuthNeeded(false);
@@ -65,5 +73,5 @@ export function useWorkspace() {
     setAuthNeeded(true);
     await refresh();
   }, [refresh]);
-  return { data, setData, connected, error, refresh, updateMe, authNeeded, roster, inviteRequired, login, claim, register, logout };
+  return { data, setData, connected, error, refresh, updateMe, authNeeded, roster, inviteRequired, login, loginEmail, claim, register, saveCredentials, logout };
 }

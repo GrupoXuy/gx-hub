@@ -97,3 +97,15 @@
 
 /* Perfil sempre visível na base da barra lateral */
 .sidebar-user{position:sticky;bottom:0;background:var(--sidebar)}
+
+/* ===== Credenciais (ProfileDialog) ===== */
+.credentials-section{margin-top:22px;padding-top:20px;border-top:1px solid #494240}
+.credentials-section h3{font-size:11px;font-weight:600;letter-spacing:1.6px;color:#c4ad78;text-transform:uppercase;margin-bottom:10px}
+.credentials-section .modal-description{margin:0 0 16px;font-size:10.5px}
+.credentials-ok{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 12px;border:1px solid #4a5f4a;border-radius:7px;background:#5f7a4a18;font-size:11px;color:#b9d898}
+.credentials-section .form-field{margin-bottom:14px}
+.credentials-section input{background:#1a2416}
+/* Email login hint */
+.auth-email-hint{font-size:10.5px;color:#8d9694;margin:16px 0 18px;text-align:center}
+.auth-email-login .form-field{margin-bottom:14px}
+.auth-email-login input{background:#1a2416}

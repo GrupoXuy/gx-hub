@@ -9,12 +9,13 @@ type Props = {
   inviteToken: string;
   accessToken: string;
   onLogin: (userId: string) => Promise<void>;
+  onLoginEmail: (email: string, password: string) => Promise<void>;
   onClaim: (token: string) => Promise<void>;
   onRegister: (payload: { name: string; role: string; company: string; color: string; inviteToken: string }) => Promise<void>;
 };
 
-export function AuthGate({ roster, inviteToken, accessToken, onLogin, onClaim, onRegister }: Props) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export function AuthGate({ roster, inviteToken, accessToken, onLogin, onLoginEmail, onClaim, onRegister }: Props) {
+  const [mode, setMode] = useState<"login" | "register" | "email">("login");
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -24,6 +25,8 @@ export function AuthGate({ roster, inviteToken, accessToken, onLogin, onClaim, o
   const [color, setColor] = useState(AVATAR_COLORS[0].value);
   const [invite, setInvite] = useState(inviteToken);
   const [personalToken, setPersonalToken] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [registering, setRegistering] = useState(false);
   const claimed = useRef("");
@@ -70,8 +73,9 @@ export function AuthGate({ roster, inviteToken, accessToken, onLogin, onClaim, o
       <div className="auth-tabs">
         <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Entrar</button>
         <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Primeiro acesso</button>
+        <button className={mode === "email" ? "active" : ""} onClick={() => setMode("email")}>Email e senha</button>
       </div>
-      {mode === "login" ? <>
+      {mode === "email" ? <EmailLogin email={email} setEmail={setEmail} password={password} setPassword={setPassword} busyId={busyId} setBusyId={setBusyId} setNotice={setNotice} setError={setError} onLoginEmail={onLoginEmail} /> : mode === "login" ? <>
         <div className="auth-roster">
           {roster.map(user => <button key={user.id} className="auth-user" onClick={() => void enter(user)} disabled={!!busyId}>
             <Avatar member={user} size={42} />
@@ -103,4 +107,23 @@ export function AuthGate({ roster, inviteToken, accessToken, onLogin, onClaim, o
       <p className="auth-footer">Grupo X · Gestão que direciona. Estratégia que multiplica.</p>
     </div>
   </div>;
+}
+
+function EmailLogin({ email, setEmail, password, setPassword, busyId, setBusyId, setNotice, setError, onLoginEmail }: {
+  email: string; setEmail: (v: string) => void; password: string; setPassword: (v: string) => void;
+  busyId: string; setBusyId: (v: string) => void; setNotice: (v: string) => void; setError: (v: string) => void;
+  onLoginEmail: (email: string, password: string) => Promise<void>;
+}) {
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setBusyId("email"); setError("");
+    try { await onLoginEmail(email.trim(), password); }
+    catch (err) { setError(err instanceof Error ? err.message : "Não foi possível entrar."); }
+    finally { setBusyId(""); setNotice(""); }
+  };
+  return <form className="auth-email-login" onSubmit={submit}>
+    <p className="auth-email-hint">Acesso administrativo com email e senha.</p>
+    <label className="form-field"><span>Email</span><input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" autoComplete="email" /></label>
+    <label className="form-field"><span>Senha</span><input type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" autoComplete="current-password" /></label>
+    <button type="submit" className="button button-primary full-width" disabled={!!busyId && busyId !== "email"}>{busyId === "email" ? <LoaderCircle size={17} className="spin" /> : <ShieldCheck size={17} />}Entrar com email e senha</button>
+  </form>;
 }
