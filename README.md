@@ -12,16 +12,18 @@ Um workspace em português inspirado em ambientes isométricos, com a identidade
 - Convites de visitante com validade de sete dias e entrada com nome personalizado.
 - Interface responsiva e navegação por teclado.
 
-## Deploy permanente (GitHub + Vercel + Neon)
+## Deploy permanente (GitHub + Vercel + Neon) — ✅ ATIVO
 
-Este projeto é full-stack com banco de dados, por isso **não pode** ser publicado no GitHub Pages (apenas sites estáticos). O caminho recomendado, 100% gratuito:
+- **Link permanente:** https://gx-hub-escritorio.vercel.app
+- **Código:** https://github.com/GrupoXuy/gx-hub-escritorio (push na `main` gera deploy automático de produção)
+- **Banco:** Postgres Neon `neon-carmine-envelope` conectado ao projeto (compartilhado com o app `gx-hub`; tabelas deste app usam o prefixo `gx_`). As tabelas são criadas sozinhas no primeiro acesso (`seedWorkspace` em `src/lib/server.ts`); `migrations/0001_init.sql` serve como referência/documentação do schema.
 
-1. **GitHub (código):** crie um repositório em [github.com/new](https://github.com/new) e envie o código do projeto. O repositório fica em `https://github.com/seu-usuario/gx-hub`.
-2. **Banco de dados:** crie um Postgres gratuito no [Neon](https://neon.tech) ou [Supabase](https://supabase.com).
-   - Abra o **SQL editor** do banco e cole todo o conteúdo de `migrations/0001_init.sql` e execute uma vez. O app preenche as salas e os perfis de demonstração automaticamente no primeiro acesso.
-3. **Vercel (link permanente):** entre em [vercel.com](https://vercel.com) com sua conta GitHub e clique em **Add New → Project** para importar o repositório `gx-hub`. O Next.js é detectado automaticamente.
-4. **Variável de ambiente:** no projeto da Vercel, adicione `DATABASE_URL` com a string de conexão direta do seu banco (no Neon: Database → Connect → Direct connection string). Copie `TURN_SERVER_URL`, `TURN_USERNAME` e `TURN_CREDENTIAL` para o `.env` local apenas se for usar um servidor TURN.
-5. **Deploy:** clique em **Deploy**. Em menos de 2 minutos o app ficará em `https://gx-hub.vercel.app` (ou o subdomínio escolhido). Todo push no GitHub gera deploy automático — o link permanece o mesmo.
+Este projeto é full-stack com banco de dados, por isso **não pode** ser publicado no GitHub Pages (apenas sites estáticos). Para replicar em outra conta, o caminho recomendado, 100% gratuito:
+
+1. **GitHub (código):** crie um repositório em [github.com/new](https://github.com/new) e envie o código do projeto.
+2. **Banco de dados:** crie um Postgres gratuito no [Neon](https://neon.tech) ou [Supabase](https://supabase.com) e conecte ao projeto na Vercel (Storage) — ou defina `DATABASE_URL` manualmente nas variáveis do projeto.
+3. **Vercel (link permanente):** entre em [vercel.com](https://vercel.com) com sua conta GitHub e clique em **Add New → Project** para importar o repositório. O Next.js é detectado automaticamente.
+4. **Deploy:** clique em **Deploy**. Todo push no GitHub gera deploy automático — o link permanece o mesmo. Copie `TURN_SERVER_URL`, `TURN_USERNAME` e `TURN_CREDENTIAL` para o `.env` local apenas se for usar um servidor TURN.
 
 O arquivo `.env` com segredos nunca é enviado ao GitHub (protegido pelo `.gitignore`); use `.env.example` como modelo local.
 
