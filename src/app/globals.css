@@ -122,3 +122,27 @@
 .auth-email-hint{font-size:10.5px;color:#8d9694;margin:16px 0 18px;text-align:center}
 .auth-email-login .form-field{margin-bottom:14px}
 .auth-email-login input{background:#1a2416}
+
+/* ===== NOSSO ECOSSISTEMA — hub de empresas (cards clicáveis) ===== */
+.ecosystem-cards{display:flex;flex-direction:column;gap:8px}
+.ecosystem-card{position:relative;display:flex;align-items:stretch;border:1px solid transparent;border-radius:9px;background:transparent;transition:transform .25s ease,background-color .25s ease,border-color .25s ease,box-shadow .25s ease}
+.ecosystem-card:hover{background:#1f2223;border-color:#c7a66e2e;transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35),0 0 0 1px rgba(199,166,110,.10),0 0 22px rgba(199,166,110,.08)}
+.ecosystem-card-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 10px;min-height:56px;color:inherit;text-decoration:none;border-radius:9px}
+.ecosystem-card-main:hover{color:inherit}
+.ecosystem-logo{width:40px;height:40px;flex-shrink:0;display:grid;place-items:center;overflow:hidden;border:1px solid #2c2f30;border-radius:8px;background:#101214}
+.ecosystem-logo>img{width:100%;height:100%;object-fit:contain;display:block}
+.ecosystem-logo .company-nav-icon{width:100%;height:100%;border:0;border-radius:0;background:transparent}
+.ecosystem-card-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ecosystem-card-text>strong{display:block;font-size:12px;font-weight:600;line-height:1.3;color:#dfe1e2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ecosystem-card-text>small{display:block;font-size:10px;line-height:1.45;color:#838586;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ecosystem-go{flex-shrink:0;color:#b7a37a;opacity:0;transition:opacity .2s ease}
+.ecosystem-card:hover .ecosystem-go{opacity:1}
+.ecosystem-instagram{flex-shrink:0;width:36px;display:grid;place-items:center;color:#8b9092;border-left:1px solid #2a2d2e;border-radius:0 9px 9px 0;transition:color .2s ease,background-color .2s ease}
+.ecosystem-instagram:hover{color:#ddc08a;background:#c7a66e12}
+.ecosystem-card-main:focus-visible,.ecosystem-instagram:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.ecosystem-companies>article>.ecosystem-logo{background:#101214;border:1px solid #2c2f30;border-radius:8px}
+.ecosystem-company-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ecosystem-company-links>a{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #4a4436;border-radius:6px;background:#c7a66e0d;color:#d3ba7f;font-size:10.5px;font-weight:600;text-decoration:none;transition:border-color .2s ease,background-color .2s ease,transform .2s ease}
+.ecosystem-company-links>a:hover{border-color:#8a7647;background:#c7a66e1a;transform:translateY(-1px)}
+@media(hover:none){.ecosystem-go{opacity:.55}.ecosystem-card-main{min-height:60px}}
+@media(prefers-reduced-motion:reduce){.ecosystem-card,.ecosystem-card-main,.ecosystem-instagram,.ecosystem-company-links>a{transition:none}.ecosystem-card:hover,.ecosystem-company-links>a:hover{transform:none}}
