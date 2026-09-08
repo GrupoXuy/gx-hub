@@ -4,7 +4,9 @@ import { Pool } from "pg";
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
+  // Permite o build em ambientes sem variável (ex.: primeira publicação na Vercel).
+  // A conexão só falha quando uma requisição chegar sem DATABASE_URL configurada.
+  console.warn("DATABASE_URL não configurada. Configure a variável para habilitar o workspace.");
 }
 
 const globalForDb = globalThis as typeof globalThis & {
