@@ -7,7 +7,7 @@ REPO_NAME="${GITHUB_REPO:-gx-hub}"
 PRIVATE="${GITHUB_PRIVATE:-false}"
 API="https://api.github.com"
 AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json")
-json() { node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(eval('d.'+'$1')||'')}catch{console.log('')}})"; }
+json() { node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{let o={};try{o=JSON.parse(d)}catch{};try{console.log(eval('o.'+'$1')||'')}catch{console.log('')}})"; }
 
 LOGIN="$(curl -sf "${AUTH[@]}" "$API/user" | json "login")"
 [ -n "$LOGIN" ] || { echo "Token GitHub invalido."; exit 1; }
