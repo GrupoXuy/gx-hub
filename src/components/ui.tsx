@@ -10,12 +10,19 @@ export function BrandMark({ size = 44 }: { size?: number }) {
 export function Avatar({ member, size = 34, status = false, className = "" }: { member: Pick<Member, "name" | "avatar" | "color"> & Partial<Member>; size?: number; status?: boolean; className?: string }) {
   return <span className={`avatar ${className}`} style={{ width: size, height: size, background: `${member.color}25`, color: member.color }}><span className="avatar-initials" style={{ fontSize: size * .33 }}>{initials(member.name)}</span>{member.avatar && <img src={member.avatar} alt="" width={size} height={size} onError={event => { event.currentTarget.style.display = "none"; }} />}{status && <i className={`presence-dot ${member.status || "available"}`} />}</span>;
 }
-export function PixelAvatar({ member, size = 46, own = false }: { member: Pick<Member, "color" | "id" | "handRaised">; size?: number; own?: boolean }) {
+export function PixelAvatar({ member, size = 46, own = false }: { member: Pick<Member, "color" | "id" | "handRaised" | "gender">; size?: number; own?: boolean }) {
   const hash = [...member.id].reduce((sum, c) => sum + c.charCodeAt(0), 0);
   const skin = ["#e4b78e", "#c49170", "#d8a583"][hash % 3];
   const hair = ["#49352a", "#382b28", "#604731"][hash % 3];
+  const female = member.gender === "female";
+  const bangs = female
+    ? <g><path d="M7 1H19V4H21V8H7V4H7Z" fill={hair}/><path d="M7 5H23" stroke={hair} strokeWidth="1.6"/></g>
+    : <path d="M9 4H19V5H22V9H23V12H20V8H13V10H8V14H6V8H8V5H9Z" fill={hair}/>;
+  const ponytail = female
+    ? <path d="M21 12H24V26H21V22H22V16H21Z" fill={hair}/>
+    : null;
   return <span className={`pixel-avatar ${own ? "own-pixel" : ""}`} style={{ width: size * .7, height: size }}>
-    <svg height={size} width={size * .7} viewBox="0 0 30 44" aria-hidden="true"><ellipse cx="15" cy="40" rx="12" ry="3.6" fill={own ? "#d7b576" : "#000"} opacity={own ? .38 : .3}/><g shapeRendering="crispEdges"><path d="M10 29H16V39H9V36H10V29ZM16 29H21V39H16V29Z" fill="#30343b"/><path d="M8 38H15V41H7V39H8ZM17 38H23V41H16V39H17Z" fill="#ddd8cd"/><path d="M8 19H21V30H8Z" fill={member.color}/><path d="M8 19H11V29H8Z" fill="#000" opacity=".16"/><path d="M11 19H18V22H11Z" fill="#fff" opacity=".1"/><path d="M5 21H8V29H4V25H5ZM21 21H24V29H21Z" fill={member.color}/><path d="M4 28H8V33H4ZM21 28H25V33H21Z" fill={skin}/><path d="M12 16H18V21H12Z" fill={skin}/><path d="M9 5H20V8H23V15H21V18H10V16H7V9H9Z" fill={skin}/><path d="M9 4H19V5H22V9H23V12H20V8H13V10H8V14H6V8H8V5H9Z" fill={hair}/><path d="M10 11H12V13H10ZM18 11H20V13H18Z" fill="#352b29"/><path d="M14 15H18V16H14Z" fill="#a36e54"/><path d="M8 10H10V15H8Z" fill="#fff" opacity=".12"/></g></svg>
+    <svg height={size} width={size * .7} viewBox="0 0 30 44" aria-hidden="true"><ellipse cx="15" cy="40" rx="12" ry="3.6" fill={own ? "#d7b576" : "#000"} opacity={own ? .38 : .3}/><g shapeRendering="crispEdges"><path d="M10 29H16V39H9V36H10V29ZM16 29H21V39H16V29Z" fill="#30343b"/><path d="M8 38H15V41H7V39H8ZM17 38H23V41H16V39H17Z" fill="#ddd8cd"/><path d="M8 19H21V30H8Z" fill={member.color}/><path d="M8 19H11V29H8Z" fill="#000" opacity=".16"/><path d="M11 19H18V22H11Z" fill="#fff" opacity=".1"/><path d="M5 21H8V29H4V25H5ZM21 21H24V29H21Z" fill={member.color}/><path d="M4 28H8V33H4ZM21 28H25V33H21Z" fill={skin}/><path d="M12 16H18V21H12Z" fill={skin}/><path d="M9 5H20V8H23V15H21V18H10V16H7V9H9Z" fill={skin}/>{bangs}{ponytail}<path d="M10 11H12V13H10ZM18 11H20V13H18Z" fill="#352b29"/><path d="M14 15H18V16H14Z" fill="#a36e54"/><path d="M8 10H10V15H8Z" fill="#fff" opacity=".12"/>{female && <path d="M19 22.5H20.5V24.5H19Z" fill="#e8d5a4"/>}</g></svg>
     {member.handRaised && <span className="wave-bubble">👋</span>}
   </span>;
 }

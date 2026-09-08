@@ -23,6 +23,7 @@ create table if not exists gx_users (
   y real not null default 73,
   is_demo boolean not null default false,
   is_admin boolean not null default false,
+  gender text,
   access_token text,
   hand_raised boolean not null default false,
   call_room text,

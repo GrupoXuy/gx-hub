@@ -15,6 +15,7 @@ const DDL_STATEMENTS = [
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS access_token text`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS email text`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS password_hash text`,
+  `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS gender text`,
   `CREATE TABLE IF NOT EXISTS gx_messages (id text PRIMARY KEY, sender_id text NOT NULL REFERENCES gx_users(id), room_id text NOT NULL DEFAULT 'geral', content text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())`,
   `CREATE INDEX IF NOT EXISTS gx_messages_created_at_idx ON gx_messages (created_at DESC)`,
   `CREATE TABLE IF NOT EXISTS gx_meetings (id text PRIMARY KEY, title text NOT NULL, description text NOT NULL DEFAULT '', room_id text NOT NULL REFERENCES gx_rooms(id), starts_at timestamptz NOT NULL, duration integer NOT NULL DEFAULT 30, organizer_id text NOT NULL REFERENCES gx_users(id), created_at timestamptz NOT NULL DEFAULT now())`,

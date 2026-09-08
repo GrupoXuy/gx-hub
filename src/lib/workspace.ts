@@ -2,9 +2,13 @@ export type View = "office" | "rooms" | "team" | "agenda";
 export type Member = {
   id: string; name: string; role: string; company: string; avatar: string; color: string;
   roomId: string; status: string; x: number; y: number; isDemo: boolean; isAdmin: boolean;
-  email?: string | null; accessToken?: string | null; handRaised: boolean;
+  gender?: string | null; email?: string | null; accessToken?: string | null; handRaised: boolean;
   callRoom: string | null; micEnabled: boolean; cameraEnabled: boolean; lastSeen?: string;
 };
+export const GENDER_OPTIONS = [
+  { value: "male", label: "Masculino" },
+  { value: "female", label: "Feminino" },
+];
 export type RosterEntry = {
   id: string; name: string; role: string; company: string; avatar: string; color: string;
   isAdmin: boolean; online: boolean;

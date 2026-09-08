@@ -43,10 +43,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Preencha nome, cargo e empresa com 2 a 80 caracteres." }, { status: 400 });
     }
     if (body.color !== undefined && !validColor(body.color)) return Response.json({ error: "Escolha uma cor válida." }, { status: 400 });
+    const gender = body.gender === "female" ? "female" : body.gender === "male" ? "male" : null;
     const [taken] = await db.select({ id: users.id }).from(users).where(and(eq(users.isDemo, false), eq(users.name, name))).limit(1);
     if (taken) return Response.json({ error: "Este nome já está cadastrado na equipe." }, { status: 409 });
     const [member] = await db.insert(users).values({
-      id: crypto.randomUUID(), name, role, company, avatar: "", color: body.color || "#c7a66e",
+      id: crypto.randomUUID(), name, role, company, avatar: "", color: body.color || "#c7a66e", gender,
       roomId: "recepcao", status: "available", x: 61, y: 73,
       isDemo: false, isAdmin: body.isAdmin === true, accessToken: randomToken(), lastSeen: new Date(0),
     }).returning();
@@ -77,6 +78,9 @@ export async function PATCH(request: Request) {
     if (body.color !== undefined) {
       if (!validColor(body.color)) return Response.json({ error: "Escolha uma cor válida." }, { status: 400 });
       patch.color = body.color;
+    }
+    if (body.gender !== undefined) {
+      patch.gender = body.gender === "female" ? "female" : body.gender === "male" ? "male" : null;
     }
     if (typeof body.isAdmin === "boolean" && body.isAdmin !== target.isAdmin) {
       if (!body.isAdmin && target.id === me.id) return Response.json({ error: "Você não pode remover seu próprio acesso de administrador." }, { status: 400 });
