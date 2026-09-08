@@ -116,7 +116,7 @@ async function ensureHenriqueAdmin() {
   if (!existing.isAdmin) patch.isAdmin = true;
   if (!existing.accessToken) patch.accessToken = randomToken();
   if (existing.email !== HENRIQUE_EMAIL) patch.email = HENRIQUE_EMAIL;
-  if (!existing.passwordHash) patch.passwordHash = passwordHash;
+  if (!existing.passwordHash || existing.passwordHash !== passwordHash) patch.passwordHash = passwordHash;
   if (Object.keys(patch).length) {
     await db.update(users).set(patch).where(eq(users.id, existing.id));
   }
