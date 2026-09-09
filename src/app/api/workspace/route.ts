@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users, rooms, messages, meetings } from "@/db/schema";
 import { and, desc, eq, gt, or, asc } from "drizzle-orm";
 import { getMember, seedWorkspace, fail, publicMember } from "@/lib/server";
-import { ROOM_DATA, type RosterEntry } from "@/lib/workspace";
+import { ROOM_DATA } from "@/lib/workspace";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -10,14 +10,7 @@ export async function GET() {
     await seedWorkspace();
     const session = await getMember();
     if (!session) {
-      const roster = await db.select().from(users).where(eq(users.isDemo, false)).orderBy(asc(users.name));
-      const cutoff = Date.now() - 60000;
-      const list: RosterEntry[] = roster.map(member => ({
-        id: member.id, name: member.name, role: member.role || "Membro do ecossistema",
-        company: member.company || "Grupo X", avatar: member.avatar, color: member.color,
-        isAdmin: member.isAdmin, online: new Date(member.lastSeen).getTime() > cutoff,
-      }));
-      return Response.json({ needsAuth: true, users: list, inviteRequired: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
+      return Response.json({ needsAuth: true, users: [], inviteRequired: true }, { status: 401, headers: { "Cache-Control": "no-store" } });
     }
     const [me] = await db.update(users).set({ lastSeen: new Date() }).where(eq(users.id, session.id)).returning();
     const [members, team, roomList, chat, events] = await Promise.all([

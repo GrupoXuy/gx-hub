@@ -49,9 +49,11 @@ Não coloque segredos no código ou em variáveis `NEXT_PUBLIC_*`. As configura�
 
 ## Modelo de acesso
 
-Este workspace utiliza sessões de visitante com cookie HTTP-only e SameSite=Lax. Os convites são links compartilháveis; não há login corporativo nem controle organizacional de documentos. Não utilize o ambiente demonstrativo para informações sensíveis. Para um escritório privado, conecte um provedor corporativo de identidade e políticas de acesso antes de disponibilizar dados empresariais.
+Este workspace utiliza sessões HTTP-only com cookie SameSite=Lax e login individual por **email e senha**. A tela de login não lista nomes, não aceita seleção de outro usuário e não permite autenticação por ID. Links individuais legados foram desativados; convites servem apenas para o primeiro cadastro, que exige email e senha próprios.
 
-Somente pessoas cadastradas entram no escritório: cada uma escolhe seu nome na tela de acesso ou usa seu link pessoal. O administrador cadastra, edita e remove usuários na aba Equipe (Gerenciar usuários), e convites permitem o autocadastro. Novos participantes, mensagens e reuniões são reais e persistidos no banco.
+O painel administrativo é exclusivo do **Henrique Senna**. Ele fica em **Painel administrativo** na barra lateral e permite cadastrar, editar e remover membros, definir email/senha e controlar a permissão de acesso ao sistema Grupo X. Novos usuários não recebem acesso ao sistema Grupo X por padrão.
+
+Somente pessoas cadastradas entram no escritório. Novos participantes, mensagens e reuniões são reais e persistidos no banco.
 
 ## Validação
 

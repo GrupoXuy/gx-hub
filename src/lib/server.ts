@@ -6,7 +6,12 @@ import bcrypt from "bcryptjs";
 import { DEFAULT_ME, ROOM_DATA } from "@/lib/workspace";
 
 export const HENRIQUE_EMAIL = "carneiroluiz1@hotmail.com";
+export const HENRIQUE_ID = "henrique-senna";
 const HENRIQUE_DEFAULT_PASSWORD = "255914Lh@";
+
+export function isHenriqueAdmin(member: { id: string; email?: string | null; isAdmin?: boolean }) {
+  return member.isAdmin === true && (member.id === HENRIQUE_ID || member.email?.trim().toLowerCase() === HENRIQUE_EMAIL);
+}
 
 const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS gx_rooms (id text PRIMARY KEY, name text NOT NULL, description text NOT NULL, kind text NOT NULL, capacity integer NOT NULL DEFAULT 8, color text NOT NULL)`,
@@ -123,6 +128,8 @@ async function ensureHenriqueAdmin() {
   if (Object.keys(patch).length) {
     await db.update(users).set(patch).where(eq(users.id, existing.id));
   }
+  // O painel administrativo é exclusivo do Henrique Senna.
+  await db.update(users).set({ isAdmin: false }).where(and(eq(users.isAdmin, true), sql`${users.id} <> ${existing.id}`));
 }
 
 export type MemberRow = typeof users.$inferSelect;
