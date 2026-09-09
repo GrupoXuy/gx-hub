@@ -18,6 +18,7 @@ Um workspace em português inspirado em ambientes isométricos, com a identidade
 - **Deploy atual da Vercel:** https://gx-hub-escritorio.vercel.app (fallback enquanto o alias `gxhubofficemeet.vercel.app` é associado ao projeto)
 - **Código:** https://github.com/GrupoXuy/gx-hub-escritorio (push na `main` gera deploy automático de produção)
 - **Banco:** Postgres Neon `neon-carmine-envelope` conectado ao projeto (compartilhado com o app `gx-hub`; tabelas deste app usam o prefixo `gx_`). As tabelas são criadas sozinhas no primeiro acesso (`seedWorkspace` em `src/lib/server.ts`); `migrations/0001_init.sql` serve como referência/documentação do schema.
+- **Acesso protegido ao sistema Grupo X:** `https://gxhubuy.lovable.app/`. Henrique Senna recebe acesso por padrão; cada membro pode ser autorizado individualmente pelo administrador em **Gerenciar usuários → Acesso ao sistema Grupo X**. O botão só aparece para quem tem essa permissão.
 
 Este projeto é full-stack com banco de dados, por isso **não pode** ser publicado no GitHub Pages (apenas sites estáticos). Para replicar em outra conta, o caminho recomendado, 100% gratuito:
 
