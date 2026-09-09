@@ -12,6 +12,7 @@ const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS gx_rooms (id text PRIMARY KEY, name text NOT NULL, description text NOT NULL, kind text NOT NULL, capacity integer NOT NULL DEFAULT 8, color text NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS gx_users (id text PRIMARY KEY, name text NOT NULL, role text NOT NULL DEFAULT 'Membro do ecossistema', company text NOT NULL DEFAULT 'Grupo X', avatar text NOT NULL DEFAULT '', color text NOT NULL DEFAULT '#c7a66e', room_id text NOT NULL DEFAULT 'recepcao', status text NOT NULL DEFAULT 'available', x real NOT NULL DEFAULT 61, y real NOT NULL DEFAULT 73, is_demo boolean NOT NULL DEFAULT false, is_admin boolean NOT NULL DEFAULT false, access_token text, hand_raised boolean NOT NULL DEFAULT false, call_room text, mic_enabled boolean NOT NULL DEFAULT false, camera_enabled boolean NOT NULL DEFAULT false, last_seen timestamptz NOT NULL DEFAULT now())`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS can_access_group_system boolean NOT NULL DEFAULT false`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS access_token text`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS email text`,
   `ALTER TABLE gx_users ADD COLUMN IF NOT EXISTS password_hash text`,
@@ -108,13 +109,14 @@ async function ensureHenriqueAdmin() {
     await db.insert(users).values({
       id: "henrique-senna", name: "Henrique Senna", role: "Fundador & CEO", company: "Grupo X",
       avatar: DEFAULT_ME.avatar, color: "#c7a66e", roomId: "recepcao", status: "available",
-      x: 61, y: 73, isDemo: false, isAdmin: true, email: HENRIQUE_EMAIL, passwordHash,
+      x: 61, y: 73, isDemo: false, isAdmin: true, canAccessGroupSystem: true, email: HENRIQUE_EMAIL, passwordHash,
       accessToken: randomToken(), lastSeen: new Date(0),
     }).onConflictDoNothing();
     return;
   }
   const patch: Partial<typeof users.$inferInsert> = {};
   if (!existing.isAdmin) patch.isAdmin = true;
+  if (!existing.canAccessGroupSystem) patch.canAccessGroupSystem = true;
   if (!existing.accessToken) patch.accessToken = randomToken();
   if (existing.email !== HENRIQUE_EMAIL) patch.email = HENRIQUE_EMAIL;
   if (!existing.passwordHash || existing.passwordHash !== passwordHash) patch.passwordHash = passwordHash;

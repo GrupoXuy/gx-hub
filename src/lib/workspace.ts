@@ -2,7 +2,7 @@ export type View = "office" | "rooms" | "team" | "agenda";
 export type Member = {
   id: string; name: string; role: string; company: string; avatar: string; color: string;
   roomId: string; status: string; x: number; y: number; isDemo: boolean; isAdmin: boolean;
-  gender?: string | null; email?: string | null; accessToken?: string | null; handRaised: boolean;
+  canAccessGroupSystem: boolean; gender?: string | null; email?: string | null; accessToken?: string | null; handRaised: boolean;
   callRoom: string | null; micEnabled: boolean; cameraEnabled: boolean; lastSeen?: string;
 };
 export const GENDER_OPTIONS = [
@@ -29,7 +29,7 @@ const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit
 export const DEFAULT_ME: Member = {
   id: "local", name: "Henrique Senna", role: "Fundador & CEO", company: "Grupo X",
   avatar: photo("photo-1472099645785-5658abf4ff4e"), color: "#c7a66e", roomId: "recepcao",
-  status: "available", x: 61, y: 73, isDemo: false, isAdmin: false, accessToken: null,
+  status: "available", x: 61, y: 73, isDemo: false, isAdmin: false, canAccessGroupSystem: true, accessToken: null,
   handRaised: false, callRoom: null, micEnabled: false, cameraEnabled: false,
 };
 export const AVATAR_COLORS = [

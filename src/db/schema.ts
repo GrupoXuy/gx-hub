@@ -13,6 +13,7 @@ export const users = pgTable("gx_users", {
   y: real("y").notNull().default(73),
   isDemo: boolean("is_demo").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false),
+  canAccessGroupSystem: boolean("can_access_group_system").notNull().default(false),
   gender: text("gender"),
   email: text("email"),
   passwordHash: text("password_hash"),

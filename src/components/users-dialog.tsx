@@ -16,12 +16,13 @@ export function UsersDialog({ me, onChanged, notify, onClose }: Props) {
   const [company, setCompany] = useState("Grupo X");
   const [color, setColor] = useState(AVATAR_COLORS[0].value);
   const [admin, setAdmin] = useState(false);
+  const [canAccessGroupSystem, setCanAccessGroupSystem] = useState(false);
   const [gender, setGender] = useState("male");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [createdLink, setCreatedLink] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ name: "", role: "", company: "", color: "", gender: "male", isAdmin: false });
+  const [draft, setDraft] = useState({ name: "", role: "", company: "", color: "", gender: "male", isAdmin: false, canAccessGroupSystem: false });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState("");
   const started = useRef(false);
@@ -47,10 +48,10 @@ export function UsersDialog({ me, onChanged, notify, onClose }: Props) {
   const submitCreate = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(""); setCreatedLink("");
     try {
-      const result = await api<{ member: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name: name.trim(), role: role.trim(), company, color, gender, isAdmin: admin }) });
+      const result = await api<{ member: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name: name.trim(), role: role.trim(), company, color, gender, isAdmin: admin, canAccessGroupSystem }) });
       setTeam(previous => [...previous, result.member].sort((a, b) => a.name.localeCompare(b.name)));
       setCreatedLink(personalLink(result.member));
-      setName(""); setRole(""); setAdmin(false);
+      setName(""); setRole(""); setAdmin(false); setCanAccessGroupSystem(false);
       onChanged();
       notify(`${result.member.name} cadastrado na equipe.`);
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível cadastrar."); }
@@ -59,7 +60,7 @@ export function UsersDialog({ me, onChanged, notify, onClose }: Props) {
 
   const startEdit = (member: Member) => {
     setEditing(member.id); setConfirmDelete(null);
-    setDraft({ name: member.name, role: member.role, company: member.company, color: member.color, gender: member.gender || "male", isAdmin: member.isAdmin });
+    setDraft({ name: member.name, role: member.role, company: member.company, color: member.color, gender: member.gender || "male", isAdmin: member.isAdmin, canAccessGroupSystem: member.canAccessGroupSystem === true });
   };
 
   const submitEdit = async (event: FormEvent, member: Member) => {
@@ -119,6 +120,7 @@ export function UsersDialog({ me, onChanged, notify, onClose }: Props) {
         <div className="gender-options">{GENDER_OPTIONS.map(option => <button type="button" key={option.value} className={gender === option.value ? "selected" : ""} onClick={() => setGender(option.value)}><PixelAvatar member={{ id: "pixel-" + option.value, name: option.label, avatar: "", color, gender: option.value } as Member} size={52} own/><span>{option.label}</span></button>)}</div>
       </div>
       <label className="admin-check"><input type="checkbox" checked={admin} onChange={e => setAdmin(e.target.checked)} /><ShieldCheck size={15} />Tornar administrador<span>Pode cadastrar e remover usuários.</span></label>
+      <label className="admin-check group-system-check"><input type="checkbox" checked={canAccessGroupSystem} onChange={e => setCanAccessGroupSystem(e.target.checked)} /><span className="group-system-mark">GX</span>Acesso ao sistema Grupo X<span>Exibe o botão gxhubuy.lovable.app para este membro.</span></label>
       <button type="submit" className="button button-primary full-width" disabled={busy}>{busy ? <LoaderCircle size={16} className="spin" /> : <UserPlus size={16} />}Cadastrar na equipe</button>
       {createdLink && <div className="created-link"><span><Link2 size={15} />Link de acesso pessoal criado:</span><div className="invite-link-field"><input readOnly value={createdLink} aria-label="Link de acesso pessoal" onFocus={e => e.target.select()} /><button type="button" onClick={() => void copy(createdLink, "Link de acesso copiado.")} aria-label="Copiar link"><Copy size={16} /></button></div><button type="button" className="button button-secondary full-width" onClick={() => void copy(createdLink, "Link de acesso copiado.")}><Copy size={15} />Copiar link de acesso</button></div>}
     </form>}
@@ -141,6 +143,7 @@ export function UsersDialog({ me, onChanged, notify, onClose }: Props) {
             </div>
             </div>
             <label className="admin-check"><input type="checkbox" checked={draft.isAdmin} disabled={member.id === me.id} onChange={e => setDraft({ ...draft, isAdmin: e.target.checked })} /><ShieldCheck size={15} />Administrador</label>
+            <label className="admin-check group-system-check"><input type="checkbox" checked={draft.canAccessGroupSystem} onChange={e => setDraft({ ...draft, canAccessGroupSystem: e.target.checked })} /><span className="group-system-mark">GX</span>Acesso ao sistema Grupo X</label>
             <div className="user-edit-actions">
               <button type="submit" className="button button-primary" disabled={rowBusy === member.id}>{rowBusy === member.id ? <LoaderCircle size={15} className="spin" /> : <Check size={15} />}Salvar</button>
               <button type="button" className="button button-secondary" onClick={() => setEditing(null)}>Cancelar</button>
