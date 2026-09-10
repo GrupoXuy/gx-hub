@@ -57,6 +57,7 @@ export function OfficeMap({
   const container = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const walkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waypointSeq = useRef(1);
 
   useEffect(() => {
     const sync = () => setFullscreen(document.fullscreenElement === container.current);
@@ -99,7 +100,7 @@ export function OfficeMap({
     setWalkDurationSec(durationSec);
 
     // Trigger visual waypoint ripple at target coordinates
-    setWaypoint({ x: roundedX, y: roundedY, key: Date.now() });
+    setWaypoint({ x: roundedX, y: roundedY, key: ++waypointSeq.current });
 
     // Step cycle matches physical velocity
     setIsLocalWalking(true);
@@ -121,7 +122,7 @@ export function OfficeMap({
     const durationSec = durationMs / 1000;
     setWalkDurationSec(durationSec);
 
-    setWaypoint({ x: spot.x, y: spot.y, key: Date.now() });
+    setWaypoint({ x: spot.x, y: spot.y, key: ++waypointSeq.current });
     setIsLocalWalking(true);
     if (walkTimer.current) clearTimeout(walkTimer.current);
     walkTimer.current = setTimeout(() => {
@@ -277,7 +278,7 @@ export function OfficeMap({
               <button
                 key={spot.id}
                 className={`furniture-hotspot ${spot.type} ${isSpotOccupied ? "occupied" : ""} ${isMeSittingHere ? "me-seated" : ""}`}
-                style={{ left: `${spot.x}%`, top: `${spot.y}%`, zIndex: Math.round(spot.y) }}
+                style={{ left: `${spot.x}%`, top: `${spot.y}%`, zIndex: 90 + Math.round(spot.y) }}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSitOnFurniture(spot);

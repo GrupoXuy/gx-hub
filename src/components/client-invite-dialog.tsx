@@ -9,7 +9,6 @@ export function ClientInviteDialog({ meeting, onClose }: { meeting: Meeting; onC
   const [expires, setExpires] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const started = useRef(false);
   const create = async () => {
     setError("");
     try {
@@ -18,7 +17,32 @@ export function ClientInviteDialog({ meeting, onClose }: { meeting: Meeting; onC
       setExpires(new Date(result.expiresAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); }
   };
-  useEffect(() => { if (!started.current) { started.current = true; void create(); } }, []);
+  useEffect(() => {
+    let active = true;
+    void api<{ token: string; expiresAt: string }>("/api/client-invites", {
+      method: "POST",
+      body: JSON.stringify({ meetingId: meeting.id }),
+    })
+      .then((result) => {
+        if (!active) return;
+        setLink(`${window.location.origin}/?cliente=${result.token}`);
+        setExpires(
+          new Date(result.expiresAt).toLocaleString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        );
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Não foi possível criar o convite.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [meeting.id]);
   const copy = async () => { if (!link) return; try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2400); } catch { setError("Selecione o link para copiar manualmente."); } };
   return <Modal title="Convide seu cliente para a reunião." eyebrow="CONVITE TEMPORÁRIO" onClose={onClose}>
     <p className="modal-description">Este acesso vale somente para <strong>{meeting.title}</strong>. O cliente preencherá os dados antes de entrar e não terá acesso ao workspace.</p>

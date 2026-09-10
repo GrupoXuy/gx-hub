@@ -30,60 +30,162 @@ const HEADINGS: Record<View, { eyebrow: string; title: string; description: stri
 
 export default function WorkspaceApp() {
   const { data, setData, connected, error, refresh, updateMe, authNeeded, roster, login, loginEmail, claim, register, saveCredentials, logout } = useWorkspace();
-  const [view, setView] = useState<View>("office"); const [activeRoom, setActiveRoom] = useState("all");
-  const [dialog, setDialog] = useState<Dialog>(null); const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false); const [notificationsRead, setNotificationsRead] = useState(false);
-  const [callOpen, setCallOpen] = useState(false); const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
-  const [clock, setClock] = useState(""); const [reaction, setReaction] = useState("");
-  const [inviteToken, setInviteToken] = useState(""); const [accessToken, setAccessToken] = useState("");
+  const [view, setView] = useState<View>(() => {
+    if (typeof window !== "undefined") {
+      const next = new URLSearchParams(window.location.search).get("view");
+      if (NAV.some((n) => n.id === next)) return next as View;
+    }
+    return "office";
+  });
+  const [activeRoom, setActiveRoom] = useState("all");
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsRead, setNotificationsRead] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return localStorage.getItem("gx-notifications-read") === "true";
+      } catch {}
+    }
+    return false;
+  });
+  const [callOpen, setCallOpen] = useState(false);
+  const [preferences, setPreferences] = useState<Preferences>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("gx-preferences");
+        if (saved) return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
+      } catch {}
+    }
+    return DEFAULT_PREFERENCES;
+  });
+  const [clock, setClock] = useState("");
+  const [reaction, setReaction] = useState("");
+  const [inviteToken, setInviteToken] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("invite") || "";
+    }
+    return "";
+  });
+  const [accessToken, setAccessToken] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("acesso") || "";
+    }
+    return "";
+  });
   const [toast, setToast] = useState<{ message: string; key: number } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const movementTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const movementTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastSeq = useRef(1);
   const lastMessage = useRef<string | null>(null);
-  const notify = useCallback((message: string) => { if (toastTimer.current) clearTimeout(toastTimer.current); setToast({ message, key: Date.now() }); toastTimer.current = setTimeout(() => setToast(null), 5500); }, []);
-  const refreshAfterCall = useCallback(() => { void refresh(); }, [refresh]);
+
+  const notify = useCallback((message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ message, key: ++toastSeq.current });
+    toastTimer.current = setTimeout(() => setToast(null), 5500);
+  }, []);
+
+  const refreshAfterCall = useCallback(() => {
+    void refresh();
+  }, [refresh]);
+
   const call = useCall(data.me, notify, refreshAfterCall);
   const close = useCallback(() => setDialog(null), []);
 
   const navigate = useCallback((next: View) => {
-    setView(next); setSidebarOpen(false); setNotificationsOpen(false);
-    const url = new URL(window.location.href); if (next === "office") url.searchParams.delete("view"); else url.searchParams.set("view", next);
+    setView(next);
+    setSidebarOpen(false);
+    setNotificationsOpen(false);
+    const url = new URL(window.location.href);
+    if (next === "office") url.searchParams.delete("view");
+    else url.searchParams.set("view", next);
     window.history.pushState({}, "", url.toString());
   }, []);
+
   useEffect(() => {
-    const fromUrl = () => { const next = new URLSearchParams(window.location.search).get("view"); setView(NAV.some(n => n.id === next) ? next as View : "office"); };
-    fromUrl(); window.addEventListener("popstate", fromUrl);
-    try { const saved = localStorage.getItem("gx-preferences"); if (saved) setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(saved) }); setNotificationsRead(localStorage.getItem("gx-notifications-read") === "true"); } catch {}
-    const params = new URLSearchParams(window.location.search);
-    setInviteToken(params.get("invite") || ""); setAccessToken(params.get("acesso") || "");
-    const tick = () => setClock(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })); tick(); const timer = setInterval(tick, 30000);
+    const fromUrl = () => {
+      const next = new URLSearchParams(window.location.search).get("view");
+      setView(NAV.some((n) => n.id === next) ? (next as View) : "office");
+    };
+    window.addEventListener("popstate", fromUrl);
+    const tick = () =>
+      setClock(
+        new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Sao_Paulo",
+        })
+      );
+    tick();
+    const timer = setInterval(tick, 30000);
     const shortcut = (event: KeyboardEvent) => {
-      const input = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement;
-      if (((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") || (!input && event.key === "/")) { event.preventDefault(); setDialog({ type: "search" }); }
+      const input =
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement;
+      if (((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") || (!input && event.key === "/")) {
+        event.preventDefault();
+        setDialog({ type: "search" });
+      }
     };
     window.addEventListener("keydown", shortcut);
-    return () => { clearInterval(timer); window.removeEventListener("popstate", fromUrl); window.removeEventListener("keydown", shortcut); if (toastTimer.current) clearTimeout(toastTimer.current); if (movementTimer.current) clearTimeout(movementTimer.current); if (reactionTimer.current) clearTimeout(reactionTimer.current); };
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("popstate", fromUrl);
+      window.removeEventListener("keydown", shortcut);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (movementTimer.current) clearTimeout(movementTimer.current);
+      if (reactionTimer.current) clearTimeout(reactionTimer.current);
+    };
   }, []);
-  useEffect(() => { document.documentElement.classList.toggle("reduce-motion", preferences.reduceMotion); }, [preferences.reduceMotion]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("reduce-motion", preferences.reduceMotion);
+  }, [preferences.reduceMotion]);
+
   useEffect(() => {
     if (authNeeded) return;
     const url = new URL(window.location.href);
     const room = url.searchParams.get("room");
     if (room || url.searchParams.get("invite") || url.searchParams.get("acesso")) {
-      url.searchParams.delete("invite"); url.searchParams.delete("acesso"); url.searchParams.delete("room");
+      url.searchParams.delete("invite");
+      url.searchParams.delete("acesso");
+      url.searchParams.delete("room");
       window.history.replaceState({}, "", url);
     }
     if (room) {
-      const target = data.rooms.find(r => r.id === room);
-      if (target) setDialog({ type: "join", room: target });
+      const target = data.rooms.find((r) => r.id === room);
+      if (target) {
+        const timer = setTimeout(() => setDialog({ type: "join", room: target }), 0);
+        return () => clearTimeout(timer);
+      }
     }
   }, [authNeeded, data.rooms]);
+
   useEffect(() => {
-    const latest = data.messages[data.messages.length - 1]; if (!latest) return;
+    const latest = data.messages[data.messages.length - 1];
+    if (!latest) return;
     if (lastMessage.current && lastMessage.current !== latest.id && latest.senderId !== data.me.id && !latest.sender.isDemo) {
-      setNotificationsRead(false);
+      const timer = setTimeout(() => setNotificationsRead(false), 0);
       if (preferences.notifications) {
-        try { const context = new AudioContext(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.connect(gain); gain.connect(context.destination); oscillator.frequency.value = 660; gain.gain.setValueAtTime(.035, context.currentTime); gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .16); oscillator.start(); oscillator.stop(context.currentTime + .18); oscillator.onended = () => { void context.close(); }; } catch {}
+        try {
+          const context = new AudioContext();
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.connect(gain);
+          gain.connect(context.destination);
+          oscillator.frequency.value = 660;
+          gain.gain.setValueAtTime(0.035, context.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.16);
+          oscillator.start();
+          oscillator.stop(context.currentTime + 0.18);
+          oscillator.onended = () => {
+            void context.close();
+          };
+        } catch {}
       }
+      return () => clearTimeout(timer);
     }
     lastMessage.current = latest.id;
   }, [data.messages, data.me.id, preferences.notifications]);

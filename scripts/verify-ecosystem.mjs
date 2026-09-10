@@ -13,9 +13,11 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
 
   await page.goto(base, { waitUntil: 'networkidle' });
-  // Login como Henrique (lista de acesso)
+  // Login como Henrique com email e senha
   await page.getByRole('heading', { name: 'Seu escritório, sem fronteiras.' }).waitFor({ timeout: 15000 });
-  await page.locator('.auth-user').filter({ hasText: 'Henrique Senna' }).click();
+  await page.getByLabel('Email', { exact: true }).fill('carneiroluiz1@hotmail.com');
+  await page.getByLabel('Senha', { exact: true }).fill('255914Lh@');
+  await page.getByRole('button', { name: 'Entrar no escritório', exact: true }).click();
   await page.getByText('Conexão estável', { exact: true }).waitFor({ timeout: 15000 });
 
   // 3 cards do ecossistema

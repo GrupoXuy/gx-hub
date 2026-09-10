@@ -372,7 +372,9 @@ export function Modal({
   const ref = useRef<HTMLDivElement>(null);
   const id = useId();
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const overflow = document.body.style.overflow;

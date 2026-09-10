@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight, Check, Copy, ExternalLink, Globe2, KeyRound, Rocket, ShieldCheck, Terminal, TriangleAlert, Database, GitBranch, Cloud } from "lucide-react";
 
 const LINKS = {
@@ -27,7 +28,7 @@ function CommandBlock({ command, description }: { command: string; description: 
 
 export default function InstallGuide() {
   return <main className="install-page">
-    <header className="install-header"><a className="install-logo" href="/"><span className="install-logo-mark">X</span><span><strong>GX <b>HUB</b></strong><small>PUBLICAÇÃO SEGURA</small></span></a><a className="install-live-link" href={LINKS.live} target="_blank" rel="noopener noreferrer"><span className="install-live-dot"/>Abrir workspace atual<ExternalLink size={14}/></a></header>
+    <header className="install-header"><Link className="install-logo" href="/"><span className="install-logo-mark">X</span><span><strong>GX <b>HUB</b></strong><small>PUBLICAÇÃO SEGURA</small></span></Link><a className="install-live-link" href={LINKS.live} target="_blank" rel="noopener noreferrer"><span className="install-live-dot"/>Abrir workspace atual<ExternalLink size={14}/></a></header>
     <section className="install-hero"><p className="install-eyebrow"><span/>GUIA OFICIAL DE PUBLICAÇÃO</p><h1>Coloque o GX Hub no ar<br/><em>com um caminho claro.</em></h1><p className="install-lede">Siga as etapas nesta ordem. Cada botão leva diretamente ao lugar certo para executar a ação.</p><div className="install-hero-actions"><ExternalButton href={LINKS.codespaces} primary><GitBranch size={17}/>Abrir Codespaces agora</ExternalButton><ExternalButton href={LINKS.repository}><GitBranch size={16}/>Ver repositório</ExternalButton></div></section>
     <div className="install-warning"><TriangleAlert size={17}/><p><strong>Segurança primeiro:</strong> não cole tokens no chat, no código ou no repositório. Use os tokens somente no terminal do Codespaces e revogue-os após concluir a publicação.</p></div>
     <section className="install-steps">

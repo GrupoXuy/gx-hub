@@ -19,18 +19,67 @@ export function ProfileDialog({ me, onSave, onSaveCredentials, onClose }: { me: 
   return <Modal title="Um avatar com a sua essência." eyebrow="DO SEU JEITO" onClose={onClose}><p className="modal-description">Personalize sua presença no escritório. Porque cada conexão começa com você.</p><form onSubmit={submit}><div className="profile-customizer"><div className="profile-pixel-preview"><PixelAvatar member={{ ...me, color }} own size={102}/></div><div><label className="field-label">A cor do seu avatar</label><div className="color-options">{colors.map(c => <button type="button" key={c.value} aria-label={c.name} title={c.name} className={color === c.value ? "selected" : ""} style={{ background: c.value }} onClick={() => setColor(c.value)}>{color === c.value && <Check size={15}/>}</button>)}</div><p>Uma presença única, como você.</p></div></div><label className="form-field"><span>Seu nome</span><input required minLength={2} maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder="Como a equipe pode chamar você?" autoComplete="name"/></label><div className="form-row"><label className="form-field"><span>Cargo ou área</span><input required minLength={2} maxLength={80} value={role} onChange={e => setRole(e.target.value)} placeholder="Seu papel na equipe"/></label><label className="form-field"><span>Empresa</span><select value={company} onChange={e => setCompany(e.target.value)}>{COMPANY_DATA.map(c => <option key={c.name}>{c.name}</option>)}<option>GX Hub</option><option>Empresa parceira</option></select></label></div>{error && <div className="form-error" role="alert">{error}</div>}<button type="submit" className="button button-primary full-width" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <Check size={17}/>} Salvar meu avatar</button><p className="modal-footnote">Seu perfil acompanha você em todos os ambientes do workspace.</p>{onSaveCredentials && <div className="credentials-section"><h3>Acesso por email e senha</h3><p className="modal-description">Configure o email e a senha usados para entrar como administrador. Guarde com segurança.</p>{credSaved && <div className="credentials-ok"><Check size={15}/>Email e senha atualizados com sucesso.</div>}<form onSubmit={submitCredentials}><label className="form-field"><span>Email</span><input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" autoComplete="email"/></label><div className="form-row"><label className="form-field"><span>Senha</span><input type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Nova senha" autoComplete="new-password"/></label><label className="form-field"><span>Confirmar senha</span><input type="password" required minLength={8} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a senha" autoComplete="new-password"/></label></div>{credError && <div className="form-error" role="alert">{credError}</div>}<button type="submit" className="button button-secondary full-width" disabled={credBusy}>{credBusy ? <LoaderCircle size={17} className="spin"/> : <KeyRound size={17}/>} Salvar email e senha</button></form></div>}</form></Modal>;
 }
 export function InviteDialog({ roomId, onClose }: { roomId?: string | null; onClose: () => void }) {
-  const [link, setLink] = useState(""); const [error, setError] = useState(""); const [copied, setCopied] = useState(false); const [expires, setExpires] = useState(""); const started = useRef(false); const field = useRef<HTMLInputElement>(null);
+  const [link, setLink] = useState(""); const [error, setError] = useState(""); const [copied, setCopied] = useState(false); const [expires, setExpires] = useState(""); const field = useRef<HTMLInputElement>(null);
   const create = async () => { setError(""); try { const result = await api<{ token: string; expiresAt: string }>("/api/invites", { method: "POST" }); setLink(`${window.location.origin}/?invite=${result.token}${roomId ? `&room=${encodeURIComponent(roomId)}` : ""}`); setExpires(dayLabel(result.expiresAt)); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); } };
-  useEffect(() => { if (!started.current) { started.current = true; void create(); } }, []);
+  useEffect(() => {
+    let active = true;
+    void api<{ token: string; expiresAt: string }>("/api/invites", { method: "POST" })
+      .then(result => {
+        if (!active) return;
+        setLink(`${window.location.origin}/?invite=${result.token}${roomId ? `&room=${encodeURIComponent(roomId)}` : ""}`);
+        setExpires(dayLabel(result.expiresAt));
+      })
+      .catch(err => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Não foi possível criar o convite.");
+      });
+    return () => { active = false; };
+  }, [roomId]);
   const copy = async () => { try { if (navigator.clipboard) await navigator.clipboard.writeText(link); else { field.current?.select(); if (!document.execCommand("copy")) throw new Error(); } setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { field.current?.select(); setError("Selecione o link e use Ctrl+C ou ⌘C para copiar."); } };
   return <Modal title="Boas conexões merecem companhia." eyebrow="CONVIDE SUA EQUIPE" onClose={onClose}><div className="invite-illustration"><span className="invite-circle invite-circle-one">GX</span><span className="invite-dotted-line"/><span className="invite-main-icon"><UserPlus size={30} strokeWidth={1.4}/></span><span className="invite-dotted-line"/><span className="invite-circle invite-circle-two"><Users size={20}/></span></div><p className="modal-description centered">Compartilhe o cadastro no escritório Grupo X.<br/>A próxima grande ideia pode vir dessa conexão.</p><label className="field-label">Link de convite do workspace</label><div className="invite-link-field"><Link2 size={16}/><input ref={field} readOnly aria-label="Link de convite" value={link} placeholder="Preparando seu convite..." onFocus={e => e.target.select()}/><button onClick={() => void copy()} disabled={!link} aria-label="Copiar link de convite">{copied ? <Check size={17}/> : link ? <Copy size={17}/> : <LoaderCircle size={17} className="spin"/>}</button></div>{error && <div className="form-error" role="alert">{error}{!link && <button className="text-link" onClick={() => void create()}>Tentar novamente</button>}</div>}<button className="button button-primary full-width" disabled={!link} onClick={() => void copy()}>{copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? "Link copiado!" : "Copiar link de convite"}</button><a className={`button button-secondary full-width invite-email ${!link ? "disabled" : ""}`} href={`mailto:?subject=${encodeURIComponent("Seu lugar no escritório Grupo X")}&body=${encodeURIComponent(`Vamos construir juntos? Entre no nosso escritório virtual GX Hub: ${link}`)}`}><Mail size={16}/>Convidar por e-mail<ArrowUpRight size={14}/></a><p className="invite-validity"><ShieldCheck size={13}/>{expires ? `Convite de visitante válido até ${expires}` : "Convite válido por 7 dias"}</p><p className="modal-footnote">Quem abrir este link poderá se cadastrar e entrar no escritório. Compartilhe apenas com sua equipe.</p></Modal>;
 }
-function localDateTime(date: Date) { const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60000); return adjusted.toISOString().slice(0, 16); }
+function localDateTime(date: Date) {
+  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return adjusted.toISOString().slice(0, 16);
+}
+
 export function ScheduleDialog({ rooms, onSaved, onClose }: { rooms: Room[]; onSaved: () => void; onClose: () => void }) {
-  const nextHour = new Date(); nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-  const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [roomId, setRoomId] = useState("estrategia"); const [when, setWhen] = useState(localDateTime(nextHour)); const [duration, setDuration] = useState("30"); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const submit = async (e: FormEvent) => { e.preventDefault(); setBusy(true); setError(""); try { await api("/api/meetings", { method: "POST", body: JSON.stringify({ title, description, roomId, startsAt: new Date(when).toISOString(), duration: Number(duration) }) }); onSaved(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível agendar."); } finally { setBusy(false); } };
-  return <Modal title="Reserve um tempo para conectar." eyebrow="NOVA REUNIÃO" onClose={onClose}><p className="modal-description">Um propósito em comum, um espaço para conversar.</p><form onSubmit={submit}><label className="form-field"><span>Nome da reunião</span><input required minLength={3} maxLength={100} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Alinhamento de estratégia"/></label><label className="form-field"><span>Ambiente</span><select value={roomId} onChange={e => setRoomId(e.target.value)}>{rooms.map(room => <option value={room.id} key={room.id}>{room.name} · até {room.capacity} pessoas</option>)}</select></label><div className="form-row date-form-row"><label className="form-field"><span>Data e horário</span><input type="datetime-local" required min={localDateTime(new Date())} value={when} onChange={e => setWhen(e.target.value)}/></label><label className="form-field"><span>Duração</span><select value={duration} onChange={e => setDuration(e.target.value)}>{[15, 30, 45, 60, 90, 120].map(value => <option value={value} key={value}>{value} minutos</option>)}</select></label></div><label className="form-field"><span>Sobre a conversa <small>opcional</small></span><textarea rows={3} maxLength={2000} placeholder="O que vamos construir juntos?" value={description} onChange={e => setDescription(e.target.value)}/></label>{error && <div className="form-error" role="alert">{error}</div>}<button type="submit" className="button button-primary full-width" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <CalendarDays size={17}/>}Agendar reunião</button><p className="modal-footnote">O encontro ficará visível para toda a equipe na agenda do workspace. Horários no fuso do seu dispositivo.</p></form></Modal>;
+  const [now] = useState(() => new Date());
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [roomId, setRoomId] = useState("estrategia");
+  const [when, setWhen] = useState(() => {
+    const nextHour = new Date(now);
+    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+    return localDateTime(nextHour);
+  });
+  const [duration, setDuration] = useState("30");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/meetings", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          description,
+          roomId,
+          startsAt: new Date(when).toISOString(),
+          duration: Number(duration),
+        }),
+      });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível agendar.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <Modal title="Reserve um tempo para conectar." eyebrow="NOVA REUNIÃO" onClose={onClose}><p className="modal-description">Um propósito em comum, um espaço para conversar.</p><form onSubmit={submit}><label className="form-field"><span>Nome da reunião</span><input required minLength={3} maxLength={100} value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex.: Alinhamento de estratégia"/></label><label className="form-field"><span>Ambiente</span><select value={roomId} onChange={e => setRoomId(e.target.value)}>{rooms.map(room => <option value={room.id} key={room.id}>{room.name} · até {room.capacity} pessoas</option>)}</select></label><div className="form-row date-form-row"><label className="form-field"><span>Data e horário</span><input type="datetime-local" required value={when} onChange={e => setWhen(e.target.value)}/></label><label className="form-field"><span>Duração</span><select value={duration} onChange={e => setDuration(e.target.value)}>{[15, 30, 45, 60, 90, 120].map(value => <option value={value} key={value}>{value} minutos</option>)}</select></label></div><label className="form-field"><span>Sobre a conversa <small>opcional</small></span><textarea rows={3} maxLength={2000} placeholder="O que vamos construir juntos?" value={description} onChange={e => setDescription(e.target.value)}/></label>{error && <div className="form-error" role="alert">{error}</div>}<button type="submit" className="button button-primary full-width" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <CalendarDays size={17}/>}Agendar reunião</button><p className="modal-footnote">O encontro ficará visível para toda a equipe na agenda do workspace. Horários no fuso do seu dispositivo.</p></form></Modal>;
 }
 export function MeetingDialog({ meeting, data, onJoin, onClientInvite, onCancelled, onClose }: { meeting: Meeting; data: Workspace; onJoin: (room: Room) => void; onClientInvite?: () => void; onCancelled: () => void; onClose: () => void }) {
   const room = data.rooms.find(r => r.id === meeting.roomId)!; const organizer = data.team.find(m => m.id === meeting.organizerId) || data.members.find(m => m.id === meeting.organizerId);
