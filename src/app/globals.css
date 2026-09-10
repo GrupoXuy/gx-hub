@@ -194,6 +194,8 @@
 .director-building-icon{background:#322b1f!important;border-color:#76623d!important;color:#e2c98d!important}
 .director-back-tab{color:#c7a66e!important}
 .director-back-tab:hover{background:#332a1c!important;color:#f0d7a0!important}
+.director-switch-tab{color:#d8bd7e!important;border-color:#655334!important;background:#2a2318!important;margin-left:4px}
+.director-switch-tab:hover{background:#382d1c!important;color:#f0d7a0!important;border-color:#8e7445!important}
 .director-room-badge-top{display:flex;align-items:center;gap:4px;padding:3px 7px;border:1px solid #6b5a38;border-radius:4px;background:#312617;color:#dfc68b;font-size:7.5px;font-weight:700;letter-spacing:.8px}
 
 /* ===== Guia de instalação e publicação ===== */

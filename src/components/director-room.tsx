@@ -157,7 +157,7 @@ export function DirectorRoom({
         >
           <img
             className="office-illustration"
-            src="/images/director-room.jpg"
+            src="/images/director-office.jpg"
             alt="Mesa de vidro executiva, computador, cadeiras e mobílias da Sala da Diretoria"
             draggable={false}
           />
