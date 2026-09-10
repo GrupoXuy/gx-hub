@@ -12,6 +12,15 @@ Um workspace em português inspirado em ambientes isométricos, com a identidade
 - Convites de visitante com validade de sete dias e entrada com nome personalizado.
 - Interface responsiva e navegação por teclado.
 
+## Guia visual de instalação
+
+Abra o guia com botões diretos para cada etapa:
+
+- Produção: https://gxhubofficemeet.vercel.app/instalacao
+- Preview: `/instalacao` no endereço temporário atual
+
+O guia direciona para GitHub Codespaces, criação dos tokens, validação, publicação, painel da Vercel, domínio e Neon.
+
 ## Validar credenciais e publicar a versão atual
 
 A publicação está preparada por scripts seguros, sem salvar tokens em remotes Git:
