@@ -16,7 +16,7 @@ import { EcosystemNav } from "@/components/ecosystem-nav";
 import type { EcosystemCompany } from "@/lib/ecosystem";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useCall } from "@/hooks/use-call";
-import { api, ROOM_POSITIONS, STATUS_LABELS, timeLabel, type View, type Room, type Member, type Meeting, type Message } from "@/lib/workspace";
+import { api, ROOM_POSITIONS, STATUS_LABELS, timeLabel, type View, type Room, type Member, type Meeting, type Message, type Direction, type AvatarAction } from "@/lib/workspace";
 
 type Dialog = { type: "profile" | "invite" | "schedule" | "settings" | "help" | "search" | "users" | "leads" } | { type: "member"; member: Member } | { type: "meeting"; meeting: Meeting } | { type: "clientInvite"; meeting: Meeting } | { type: "join"; room: Room } | { type: "company"; name?: string } | null;
 const NAV = [{ id: "office" as const, label: "Escritório virtual", icon: Building2 }, { id: "rooms" as const, label: "Salas de reunião", icon: Video }, { id: "team" as const, label: "Equipe", icon: Users }, { id: "agenda" as const, label: "Agenda", icon: CalendarDays }];
@@ -89,16 +89,24 @@ export default function WorkspaceApp() {
   }, [data.messages, data.me.id, preferences.notifications]);
 
   const patch = useCallback((value: Partial<Member>) => { void updateMe(value).catch(err => notify(err instanceof Error ? err.message : "Não foi possível atualizar seu perfil.")); }, [updateMe, notify]);
-  const move = useCallback((x: number, y: number) => {
+  const move = useCallback((x: number, y: number, action: AvatarAction = "idle", direction: Direction = "dr", sittingOn: string | null = null) => {
     const roomId = y < 55 ? x < 49 ? "estrategia" : "coworking" : x < 48 ? "lounge" : "recepcao";
-    setData(previous => ({ ...previous, me: { ...previous.me, x, y, roomId }, members: previous.members.map(m => m.id === previous.me.id ? { ...m, x, y, roomId } : m) }));
+    setData(previous => ({
+      ...previous,
+      me: { ...previous.me, x, y, roomId, action, direction, sittingOn },
+      members: previous.members.map(m => m.id === previous.me.id ? { ...m, x, y, roomId, action, direction, sittingOn } : m)
+    }));
     if (movementTimer.current) clearTimeout(movementTimer.current);
-    movementTimer.current = setTimeout(() => patch({ x, y, roomId }), 180);
+    movementTimer.current = setTimeout(() => patch({ x, y, roomId, action, direction, sittingOn }), 180);
   }, [setData, patch]);
-  const moveDirector = useCallback((x: number, y: number) => {
-    setData(previous => ({ ...previous, me: { ...previous.me, x, y, roomId: "diretoria" }, members: previous.members.map(m => m.id === previous.me.id ? { ...m, x, y, roomId: "diretoria" } : m) }));
+  const moveDirector = useCallback((x: number, y: number, action: AvatarAction = "idle", direction: Direction = "dr", sittingOn: string | null = null) => {
+    setData(previous => ({
+      ...previous,
+      me: { ...previous.me, x, y, roomId: "diretoria", action, direction, sittingOn },
+      members: previous.members.map(m => m.id === previous.me.id ? { ...m, x, y, roomId: "diretoria", action, direction, sittingOn } : m)
+    }));
     if (movementTimer.current) clearTimeout(movementTimer.current);
-    movementTimer.current = setTimeout(() => patch({ x, y, roomId: "diretoria" }), 180);
+    movementTimer.current = setTimeout(() => patch({ x, y, roomId: "diretoria", action, direction, sittingOn }), 180);
   }, [setData, patch]);
   const visit = useCallback((id: string) => { if (id === "diretoria" && !data.me.isAdmin) { notify("A Sala da diretoria é exclusiva para administradores."); return; } setActiveRoom(id); setDialog(null); if (id === "diretoria") { navigate("director"); return; } if (view !== "office") navigate("office"); if (id !== "all") { const position = ROOM_POSITIONS[id]; patch({ roomId: id, ...position }); } }, [data.me.isAdmin, view, navigate, patch, notify]);
   const openJoin = (room: Room) => { if (call.roomId === room.id) { setDialog(null); setCallOpen(true); } else setDialog({ type: "join", room }); };

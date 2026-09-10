@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { ShieldCheck, ArrowLeft, Maximize2, Minimize2, Minus, Plus, LocateFixed, MousePointer2, Mic, MicOff, Video, VideoOff, MonitorUp, Hand, Smile, Settings2, ChevronDown, Check, ArrowUpRight, PhoneOff, Lock } from "lucide-react";
+import { ShieldCheck, ArrowLeft, Maximize2, Minimize2, Minus, Plus, LocateFixed, MousePointer2, Mic, MicOff, Video, VideoOff, MonitorUp, Hand, Smile, Settings2, ChevronDown, Check, ArrowUpRight, PhoneOff, Lock, Armchair } from "lucide-react";
 import { Avatar, PixelAvatar, IconButton, RoomIcon } from "@/components/ui";
-import { STATUS_LABELS, type Workspace, type Member, type Room } from "@/lib/workspace";
+import { STATUS_LABELS, FLOOR_2_FURNITURE, type Workspace, type Member, type Room, type FurnitureSpot, type Direction, type AvatarAction } from "@/lib/workspace";
 import type { CallController } from "@/hooks/use-call";
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
   call: CallController;
   onBack: () => void;
   onJoin: () => void;
-  onMove: (x: number, y: number) => void;
+  onMove: (x: number, y: number, action?: AvatarAction, direction?: Direction, sittingOn?: string | null) => void;
   onProfile: () => void;
   onStatus: (status: string) => void;
   onSettings: () => void;
@@ -40,8 +40,13 @@ export function DirectorRoom({
   const [statusOpen, setStatusOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [waypoint, setWaypoint] = useState<{ x: number; y: number; key: number } | null>(null);
+  const [hoveredFurniture, setHoveredFurniture] = useState<FurnitureSpot | null>(null);
+  const [isLocalWalking, setIsLocalWalking] = useState(false);
+
   const container = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
+  const walkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const sync = () => setFullscreen(document.fullscreenElement === container.current);
@@ -52,32 +57,84 @@ export function DirectorRoom({
   const inCall = call.roomId === room.id;
   const adminsInRoom = data.team.filter((m) => m.isAdmin && m.id !== data.me.id && m.roomId === "diretoria");
 
-  const move = (clientX: number, clientY: number) => {
+  const calcDirection = (dx: number, dy: number): Direction => {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? (dy > 0 ? "dr" : "ur") : (dy > 0 ? "dl" : "ul");
+    }
+    return dy > 0 ? (dx > 0 ? "dr" : "dl") : (dx > 0 ? "ur" : "ul");
+  };
+
+  const handleFloorClick = (clientX: number, clientY: number) => {
     if (!world.current) return;
     const rect = world.current.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * 100;
     const y = ((clientY - rect.top) / rect.height) * 100;
+
     if (Math.abs((x - 50) / 46) + Math.abs((y - 56) / 36) > 1 || y < 30) return;
-    onMove(Math.round(x * 10) / 10, Math.round(y * 10) / 10);
+
+    const roundedX = Math.round(x * 10) / 10;
+    const roundedY = Math.round(y * 10) / 10;
+    const dx = roundedX - data.me.x;
+    const dy = roundedY - data.me.y;
+    const dir = calcDirection(dx, dy);
+
+    setWaypoint({ x: roundedX, y: roundedY, key: Date.now() });
+    setIsLocalWalking(true);
+    if (walkTimer.current) clearTimeout(walkTimer.current);
+    walkTimer.current = setTimeout(() => {
+      setIsLocalWalking(false);
+      onMove(roundedX, roundedY, "idle", dir, null);
+    }, 450);
+
+    onMove(roundedX, roundedY, "walk", dir, null);
+  };
+
+  const handleSitOnFurniture = (spot: FurnitureSpot) => {
+    setWaypoint({ x: spot.x, y: spot.y, key: Date.now() });
+    setIsLocalWalking(true);
+    if (walkTimer.current) clearTimeout(walkTimer.current);
+    walkTimer.current = setTimeout(() => {
+      setIsLocalWalking(false);
+      onMove(spot.x, spot.y, "sit", spot.direction, spot.id);
+    }, 400);
+
+    onMove(spot.x, spot.y, "walk", spot.direction, spot.id);
+  };
+
+  const standUp = () => {
+    setIsLocalWalking(false);
+    onMove(data.me.x, Math.min(85, data.me.y + 2), "idle", "dr", null);
   };
 
   const keyMove = (e: KeyboardEvent<HTMLDivElement>) => {
-    const moves: Record<string, [number, number]> = {
-      ArrowUp: [0, -2],
-      ArrowDown: [0, 2],
-      ArrowLeft: [-2, 0],
-      ArrowRight: [2, 0],
-      w: [0, -2],
-      s: [0, 2],
-      a: [-2, 0],
-      d: [2, 0],
+    const moves: Record<string, [number, number, Direction]> = {
+      ArrowUp: [0, -2.5, "ur"],
+      ArrowDown: [0, 2.5, "dr"],
+      ArrowLeft: [-2.5, 0, "dl"],
+      ArrowRight: [2.5, 0, "dr"],
+      w: [0, -2.5, "ur"],
+      s: [0, 2.5, "dr"],
+      a: [-2.5, 0, "dl"],
+      d: [2.5, 0, "dr"],
     };
     const delta = moves[e.key];
     if (!delta || e.target !== e.currentTarget) return;
     e.preventDefault();
-    const x = data.me.x + delta[0];
-    const y = data.me.y + delta[1];
-    if (Math.abs((x - 50) / 46) + Math.abs((y - 56) / 36) < 1 && y > 29) onMove(x, y);
+
+    const newX = data.me.x + delta[0];
+    const newY = data.me.y + delta[1];
+    const dir = delta[2];
+
+    if (Math.abs((newX - 50) / 46) + Math.abs((newY - 56) / 36) < 1 && newY > 29) {
+      setIsLocalWalking(true);
+      if (walkTimer.current) clearTimeout(walkTimer.current);
+      walkTimer.current = setTimeout(() => {
+        setIsLocalWalking(false);
+        onMove(newX, newY, "idle", dir, null);
+      }, 350);
+
+      onMove(newX, newY, "walk", dir, null);
+    }
   };
 
   const toggleFullscreen = async () => {
@@ -93,6 +150,9 @@ export function DirectorRoom({
       setFullscreen((value) => !value);
     }
   };
+
+  const isSitting = data.me.action === "sit";
+  const currentSeat = FLOOR_2_FURNITURE.find((f) => f.id === data.me.sittingOn);
 
   return (
     <section ref={container} className={`office-card ${fullscreen ? "office-expanded" : ""}`} aria-label="Sala da Diretoria Executiva">
@@ -112,7 +172,9 @@ export function DirectorRoom({
           <span className="director-room-badge-top">
             <Lock size={12} /> RESTRITA
           </span>
-          <span>{adminsInRoom.length + 1} administrador{adminsInRoom.length ? "es" : ""}</span>
+          <span>
+            {adminsInRoom.length + 1} administrador{adminsInRoom.length ? "es" : ""}
+          </span>
         </div>
       </div>
 
@@ -131,7 +193,7 @@ export function DirectorRoom({
         className="office-scene"
         tabIndex={0}
         role="application"
-        aria-label="Clique no chão ou use as setas para mover seu avatar na sala da diretoria"
+        aria-label="Clique no chão para andar ou nas mobílias executivas para sentar. Use setas ou W A S D."
         onKeyDown={keyMove}
       >
         <div className="scene-caption">
@@ -152,9 +214,10 @@ export function DirectorRoom({
           onClick={(e) => {
             if ((e.target as HTMLElement).closest("button")) return;
             e.currentTarget.parentElement?.focus({ preventScroll: true });
-            move(e.clientX, e.clientY);
+            handleFloorClick(e.clientX, e.clientY);
           }}
         >
+          {/* Main 16:9 Director Floor 3D Illustration */}
           <img
             className="office-illustration"
             src="/images/director-office.jpg"
@@ -162,6 +225,50 @@ export function DirectorRoom({
             draggable={false}
           />
 
+          {/* Interactive Executive Furniture Hotspots */}
+          {FLOOR_2_FURNITURE.map((spot) => {
+            const isSpotOccupied = adminsInRoom.some((m) => m.sittingOn === spot.id);
+            const isMeSittingHere = data.me.sittingOn === spot.id;
+            return (
+              <button
+                key={spot.id}
+                className={`furniture-hotspot ${spot.type} ${isSpotOccupied ? "occupied" : ""} ${isMeSittingHere ? "me-seated" : ""}`}
+                style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSitOnFurniture(spot);
+                }}
+                onMouseEnter={() => setHoveredFurniture(spot)}
+                onMouseLeave={() => setHoveredFurniture(null)}
+                aria-label={spot.actionLabel}
+                title={spot.actionLabel}
+              >
+                <span className="furniture-pulse-ring" />
+                <span className="furniture-icon">
+                  <Armchair size={11} />
+                </span>
+                {hoveredFurniture?.id === spot.id && !isMeSittingHere && (
+                  <span className="furniture-hover-badge">
+                    {spot.actionLabel}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Destination Waypoint Ripple Marker */}
+          {waypoint && (
+            <div
+              key={waypoint.key}
+              className="walk-target-marker"
+              style={{ left: `${waypoint.x}%`, top: `${waypoint.y}%` }}
+            >
+              <div className="waypoint-diamond" />
+              <div className="waypoint-ping" />
+            </div>
+          )}
+
+          {/* Desk Room Label */}
           <button
             className="room-map-label selected"
             style={{ left: "48%", top: "34%" }}
@@ -175,10 +282,11 @@ export function DirectorRoom({
             <span className="room-label-dot" />
           </button>
 
+          {/* Other Admins in Director Room */}
           {adminsInRoom.map((member) => (
             <button
               key={member.id}
-              className="map-person"
+              className={`map-person ${member.action === "sit" ? "is-seated" : ""}`}
               style={
                 {
                   left: `${member.x}%`,
@@ -192,15 +300,22 @@ export function DirectorRoom({
                 e.stopPropagation();
               }}
             >
-              <PixelAvatar member={member} size={47} />
+              <PixelAvatar
+                member={member}
+                size={48}
+                action={member.action || "idle"}
+                direction={member.direction || "dr"}
+              />
               <span className="person-name">
                 {member.name.split(" ")[0]} {member.name.split(" ")[1]?.[0] || ""}.
+                {member.action === "sit" && <small className="seat-subtag">🪑</small>}
               </span>
             </button>
           ))}
 
+          {/* Local User Avatar */}
           <button
-            className="map-person is-me"
+            className={`map-person is-me ${isSitting ? "is-seated" : ""} ${isLocalWalking ? "is-walking-step" : ""}`}
             style={
               {
                 left: `${data.me.x}%`,
@@ -209,16 +324,24 @@ export function DirectorRoom({
                 "--person-color": data.me.color,
               } as CSSProperties
             }
-            aria-label="Seu avatar na sala da diretoria — personalizar"
+            aria-label="Seu avatar na sala da diretoria — clique para personalizar"
             onClick={(e) => {
               e.stopPropagation();
               onProfile();
             }}
           >
-            <PixelAvatar member={data.me} size={47} own />
+            <PixelAvatar
+              member={data.me}
+              size={48}
+              own
+              action={isSitting ? "sit" : isLocalWalking ? "walk" : (data.me.action || "idle")}
+              direction={data.me.direction || "dr"}
+              isMoving={isLocalWalking}
+            />
             <span className="person-name">
               Você
               <span className="me-marker" />
+              {isSitting && <small className="seat-subtag">🪑</small>}
             </span>
             {reaction && (
               <span className="floating-reaction" key={reaction}>
@@ -228,6 +351,7 @@ export function DirectorRoom({
           </button>
         </div>
 
+        {/* Room Focus Card */}
         <div className="room-focus-card">
           <span className="room-focus-icon">
             <RoomIcon kind="private" />
@@ -241,11 +365,17 @@ export function DirectorRoom({
           </button>
         </div>
 
+        {/* Map Hint */}
         <div className="map-hint">
           <MousePointer2 size={12} />
-          <span>Clique no chão para se mover</span>
+          <span>
+            {isSitting
+              ? `Sentado em ${currentSeat?.label || "uma cadeira"} · clique no chão ou "Levantar" para andar`
+              : "Clique no chão para andar ou nas mobílias executivas 🪑 para sentar"}
+          </span>
         </div>
 
+        {/* Zoom Controls */}
         <div className="map-zoom">
           <IconButton label="Diminuir zoom" disabled={zoom <= 0.8} onClick={() => setZoom((z) => Math.max(0.8, +(z - 0.1).toFixed(1)))}>
             <Minus size={14} />
@@ -261,6 +391,7 @@ export function DirectorRoom({
         </div>
       </div>
 
+      {/* Bottom Toolbar */}
       <div className="office-toolbar">
         <div className="toolbar-profile">
           <button className="plain-button" onClick={onProfile} aria-label="Editar seu perfil">
@@ -294,6 +425,14 @@ export function DirectorRoom({
             </div>
           </div>
         </div>
+
+        {/* If seated, show Stand Up quick button */}
+        {isSitting && (
+          <button className="stand-up-button" onClick={standUp} title="Levantar da cadeira">
+            <Armchair size={13} />
+            <span>Levantar</span>
+          </button>
+        )}
 
         <div className="media-toolbar">
           <IconButton

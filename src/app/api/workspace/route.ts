@@ -65,6 +65,9 @@ export async function PATCH(request: Request) {
     if (typeof body.x === "number" && Number.isFinite(body.x)) patch.x = Math.max(10, Math.min(90, body.x));
     if (typeof body.y === "number" && Number.isFinite(body.y)) patch.y = Math.max(24, Math.min(87, body.y));
     if (typeof body.handRaised === "boolean") patch.handRaised = body.handRaised;
+    if (body.action !== undefined && ["idle", "walk", "sit", "wave"].includes(body.action)) patch.action = body.action;
+    if (body.direction !== undefined && ["dr", "dl", "ur", "ul"].includes(body.direction)) patch.direction = body.direction;
+    if (body.sittingOn !== undefined) patch.sittingOn = typeof body.sittingOn === "string" ? body.sittingOn.slice(0, 60) : null;
     const [updated] = await db.update(users).set(patch).where(and(eq(users.id, me.id), eq(users.isDemo, false))).returning();
     return Response.json(publicMember(updated));
   } catch (error) { return fail(error); }
