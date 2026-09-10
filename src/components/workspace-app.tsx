@@ -5,6 +5,7 @@ import { BrandMark, Avatar, IconButton } from "@/components/ui";
 import { OfficeMap } from "@/components/office-map";
 import { SocialPanel } from "@/components/social-panel";
 import { MeetingsPreview, RoomsView, TeamView, AgendaView } from "@/components/workspace-views";
+import { DirectorRoom } from "@/components/director-room";
 import { ProfileDialog, InviteDialog, ScheduleDialog, MeetingDialog, MemberDialog, SettingsDialog, HelpDialog, SearchDialog, CompanyDialog, DEFAULT_PREFERENCES, type Preferences } from "@/components/dialogs";
 import { PrejoinDialog, ActiveCallDialog } from "@/components/call-dialog";
 import { AuthGate } from "@/components/auth-gate";
@@ -24,6 +25,7 @@ const HEADINGS: Record<View, { eyebrow: string; title: string; description: stri
   rooms: { eyebrow: "ESPAÇOS QUE APROXIMAM", title: "Toda boa conversa tem seu lugar.", description: "Escolha um ambiente, reúna sua equipe e faça as ideias acontecerem." },
   team: { eyebrow: "NOSSA MAIOR FORÇA SÃO AS PESSOAS", title: "Talentos diferentes. Uma só direção.", description: "Encontre as pessoas que constroem o ecossistema Grupo X com você." },
   agenda: { eyebrow: "UM TEMPO PARA CONSTRUIR JUNTOS", title: "O próximo passo começa na conversa.", description: "Organize seus encontros e abra espaço para novas possibilidades." },
+  director: { eyebrow: "AMBIENTE EXECUTIVO RESTRITO", title: "Decisões que movem o próximo capítulo.", description: "Uma sala reservada para a diretoria Grupo X." },
 };
 
 export default function WorkspaceApp() {
@@ -93,11 +95,12 @@ export default function WorkspaceApp() {
     if (movementTimer.current) clearTimeout(movementTimer.current);
     movementTimer.current = setTimeout(() => patch({ x, y, roomId }), 180);
   }, [setData, patch]);
-  const visit = useCallback((id: string) => { setActiveRoom(id); setDialog(null); if (view !== "office") navigate("office"); if (id !== "all") { const position = ROOM_POSITIONS[id]; patch({ roomId: id, ...position }); } }, [view, navigate, patch]);
+  const visit = useCallback((id: string) => { setActiveRoom(id); setDialog(null); if (id === "diretoria") { navigate("director"); return; } if (view !== "office") navigate("office"); if (id !== "all") { const position = ROOM_POSITIONS[id]; patch({ roomId: id, ...position }); } }, [view, navigate, patch]);
   const openJoin = (room: Room) => { if (call.roomId === room.id) { setDialog(null); setCallOpen(true); } else setDialog({ type: "join", room }); };
   const showMember = (member: Member) => setDialog({ type: "member", member });
   const showMeeting = (meeting: Meeting) => { setNotificationsOpen(false); setDialog({ type: "meeting", meeting }); };
   const onMessage = (message: Message) => setData(previous => ({ ...previous, messages: [...previous.messages.filter(m => m.id !== message.id), message].slice(-100) }));
+  const onClearHistory = () => setData(previous => ({ ...previous, messages: [] }));
   const react = (emoji: string) => { if (reactionTimer.current) clearTimeout(reactionTimer.current); setReaction(emoji); reactionTimer.current = setTimeout(() => setReaction(""), 3000); void api<Message>("/api/messages", { method: "POST", body: JSON.stringify({ content: emoji, roomId: "geral" }) }).then(onMessage).catch(err => notify(err instanceof Error ? err.message : "Reação não enviada.")); };
   const saveProfile = async (value: Partial<Member>) => { await updateMe(value); setDialog(null); notify("Seu avatar foi atualizado. Sua essência, em cada conexão."); };
   const savePreferences = (value: Preferences) => { setPreferences(value); try { localStorage.setItem("gx-preferences", JSON.stringify(value)); } catch {} setDialog(null); notify("Preferências salvas neste dispositivo."); };
@@ -105,6 +108,7 @@ export default function WorkspaceApp() {
   const signOut = () => { void call.leave().catch(() => {}); void logout(); };
   const heading = HEADINGS[view];
   const activeCallRoom = data.rooms.find(r => r.id === call.roomId);
+  const directorRoom = data.rooms.find(r => r.id === "diretoria")!;
   const hasGroupSystemAccess = data.me.isAdmin || data.me.canAccessGroupSystem;
   const findMember = (id: string) => data.team.find(m => m.id === id) || data.members.find(m => m.id === id);
 
@@ -127,10 +131,11 @@ export default function WorkspaceApp() {
     {notificationsOpen && <button className="popover-dismiss" aria-label="Fechar notificações" onClick={() => setNotificationsOpen(false)} />}
     <main className="main-content"><div className="page-heading"><div><p className="eyebrow"><span />{heading.eyebrow}</p><h1>{heading.title}</h1><p className="page-description">{heading.description}</p></div><div className="page-heading-actions">{view === "office" ? <button className="button button-secondary avatar-edit-button" onClick={() => setDialog({ type: "profile" })}><UserRoundPen size={16} />Personalizar avatar</button> : view === "team" ? (data.me.isAdmin ? <button className="button button-primary" onClick={() => setDialog({ type: "users" })}><ShieldCheck size={16} />Painel administrativo</button> : <button className="button button-primary" onClick={() => setDialog({ type: "invite" })}><UserPlus size={16} />Convidar pessoas</button>) : <button className="button button-primary" onClick={() => setDialog({ type: "schedule" })}><Plus size={17} />Agendar reunião</button>}</div></div>
       {error && <div className="connection-error" role="alert"><WifiOff size={16} /><span>{error}</span><button onClick={() => void refresh()}>Reconectar</button></div>}
-      {view === "office" && <><div className="office-layout"><OfficeMap data={data} activeRoom={activeRoom} onRoom={visit} onMove={move} onMember={showMember} onJoin={openJoin} onProfile={() => setDialog({ type: "profile" })} onStatus={status => patch({ status })} onSettings={() => setDialog({ type: "settings" })} onHand={() => patch({ handRaised: !data.me.handRaised })} onReaction={react} reaction={reaction} call={call} onOpenCall={() => setCallOpen(true)} /><SocialPanel data={data} onMember={showMember} onTeam={() => navigate("team")} onMessage={onMessage} notify={notify} /></div><MeetingsPreview data={data} onAgenda={() => navigate("agenda")} onMeeting={showMeeting} /></>}
+      {view === "office" && <><div className="office-layout"><OfficeMap data={data} activeRoom={activeRoom} onRoom={visit} onMove={move} onMember={showMember} onJoin={openJoin} onProfile={() => setDialog({ type: "profile" })} onStatus={status => patch({ status })} onSettings={() => setDialog({ type: "settings" })} onHand={() => patch({ handRaised: !data.me.handRaised })} onReaction={react} reaction={reaction} call={call} onOpenCall={() => setCallOpen(true)} /><SocialPanel data={data} onMember={showMember} onTeam={() => navigate("team")} onMessage={onMessage} onClearHistory={onClearHistory} notify={notify} /></div><MeetingsPreview data={data} onAgenda={() => navigate("agenda")} onMeeting={showMeeting} /></>}
       {view === "rooms" && <RoomsView data={data} onJoin={openJoin} onVisit={visit} onSchedule={() => setDialog({ type: "schedule" })} />}
       {view === "team" && <TeamView data={data} onMember={showMember} onInvite={() => setDialog({ type: "invite" })} />}
       {view === "agenda" && <AgendaView data={data} onMeeting={showMeeting} onSchedule={() => setDialog({ type: "schedule" })} />}
+      {view === "director" && data.me.isAdmin && <DirectorRoom room={directorRoom} call={call} onBack={() => navigate("rooms")} onJoin={() => call.roomId === "diretoria" ? setCallOpen(true) : openJoin(directorRoom)} />}
       <footer className="workspace-footer"><span><span className="footer-x">X</span>Um ecossistema. Infinitas possibilidades.</span><span>Feito para aproximar.<Sparkles size={11} /></span></footer>
     </main></div>
     {dialog?.type === "profile" && <ProfileDialog me={data.me} onSave={saveProfile} onSaveCredentials={data.me.isAdmin ? saveCredentials : undefined} onClose={close} />}

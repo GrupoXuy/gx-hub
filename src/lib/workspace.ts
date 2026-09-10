@@ -1,4 +1,4 @@
-export type View = "office" | "rooms" | "team" | "agenda";
+export type View = "office" | "rooms" | "team" | "agenda" | "director";
 export type Member = {
   id: string; name: string; role: string; company: string; avatar: string; color: string;
   roomId: string; status: string; x: number; y: number; isDemo: boolean; isAdmin: boolean;

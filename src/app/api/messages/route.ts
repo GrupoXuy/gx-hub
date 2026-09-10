@@ -1,7 +1,16 @@
 import { db } from "@/db";
 import { messages } from "@/db/schema";
-import { getMember, fail } from "@/lib/server";
+import { getMember, isHenriqueAdmin, fail } from "@/lib/server";
 import { ROOM_DATA } from "@/lib/workspace";
+export async function DELETE() {
+  try {
+    const me = await getMember();
+    if (!me || !isHenriqueAdmin(me)) return Response.json({ error: "Apenas Henrique Senna pode apagar o histórico do chat." }, { status: 403 });
+    await db.delete(messages);
+    return Response.json({ ok: true });
+  } catch (error) { return fail(error); }
+}
+
 export async function POST(request: Request) {
   try {
     const me = await getMember();
