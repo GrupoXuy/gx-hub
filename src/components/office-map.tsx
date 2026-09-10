@@ -52,6 +52,7 @@ export function OfficeMap({
   const [waypoint, setWaypoint] = useState<{ x: number; y: number; key: number } | null>(null);
   const [hoveredFurniture, setHoveredFurniture] = useState<FurnitureSpot | null>(null);
   const [isLocalWalking, setIsLocalWalking] = useState(false);
+  const [walkDurationSec, setWalkDurationSec] = useState(0.45);
 
   const container = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
@@ -67,7 +68,7 @@ export function OfficeMap({
   const inCall = !!call.roomId;
   const selected = data.rooms.find((r) => r.id === activeRoom);
 
-  // Calculate facing direction from delta
+  // Calculate 2.5D facing direction based on movement vector
   const calcDirection = (dx: number, dy: number): Direction => {
     if (Math.abs(dx) > Math.abs(dy)) {
       return dx > 0 ? (dy > 0 ? "dr" : "ur") : (dy > 0 ? "dl" : "ul");
@@ -81,7 +82,7 @@ export function OfficeMap({
     const x = ((clientX - rect.left) / rect.width) * 100;
     const y = ((clientY - rect.top) / rect.height) * 100;
 
-    // Check bounds
+    // Check diamond boundary limits of Floor 1
     if (Math.abs((x - 50) / 46) + Math.abs((y - 56) / 36) > 1 || y < 30) return;
 
     const roundedX = Math.round(x * 10) / 10;
@@ -90,36 +91,50 @@ export function OfficeMap({
     const dy = roundedY - data.me.y;
     const dir = calcDirection(dx, dy);
 
-    // Trigger visual waypoint ripple
+    // Realistic constant walking velocity calculation
+    const dist = Math.hypot(dx, dy);
+    const speed = 28; // % per second
+    const durationMs = Math.max(280, Math.min(2200, Math.round((dist / speed) * 1000)));
+    const durationSec = durationMs / 1000;
+    setWalkDurationSec(durationSec);
+
+    // Trigger visual waypoint ripple at target coordinates
     setWaypoint({ x: roundedX, y: roundedY, key: Date.now() });
 
-    // Animate walk state
+    // Step cycle matches physical velocity
     setIsLocalWalking(true);
     if (walkTimer.current) clearTimeout(walkTimer.current);
     walkTimer.current = setTimeout(() => {
       setIsLocalWalking(false);
       onMove(roundedX, roundedY, "idle", dir, null);
-    }, 450);
+    }, durationMs);
 
-    // Call onMove with walk action and direction
     onMove(roundedX, roundedY, "walk", dir, null);
   };
 
   const handleSitOnFurniture = (spot: FurnitureSpot) => {
+    const dx = spot.x - data.me.x;
+    const dy = spot.y - data.me.y;
+    const dist = Math.hypot(dx, dy);
+    const speed = 28;
+    const durationMs = Math.max(250, Math.min(2000, Math.round((dist / speed) * 1000)));
+    const durationSec = durationMs / 1000;
+    setWalkDurationSec(durationSec);
+
     setWaypoint({ x: spot.x, y: spot.y, key: Date.now() });
     setIsLocalWalking(true);
     if (walkTimer.current) clearTimeout(walkTimer.current);
     walkTimer.current = setTimeout(() => {
       setIsLocalWalking(false);
       onMove(spot.x, spot.y, "sit", spot.direction, spot.id);
-    }, 400);
+    }, durationMs);
 
     onMove(spot.x, spot.y, "walk", spot.direction, spot.id);
   };
 
   const standUp = () => {
     setIsLocalWalking(false);
-    onMove(data.me.x, Math.min(85, data.me.y + 2), "idle", "dr", null);
+    onMove(data.me.x, Math.min(85, data.me.y + 2.5), "idle", "dr", null);
   };
 
   const keyMove = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -142,12 +157,13 @@ export function OfficeMap({
     const dir = delta[2];
 
     if (Math.abs((newX - 50) / 46) + Math.abs((newY - 56) / 36) < 1 && newY > 29) {
+      setWalkDurationSec(0.25);
       setIsLocalWalking(true);
       if (walkTimer.current) clearTimeout(walkTimer.current);
       walkTimer.current = setTimeout(() => {
         setIsLocalWalking(false);
         onMove(newX, newY, "idle", dir, null);
-      }, 350);
+      }, 260);
 
       onMove(newX, newY, "walk", dir, null);
     }
@@ -245,7 +261,7 @@ export function OfficeMap({
             handleFloorClick(e.clientX, e.clientY);
           }}
         >
-          {/* Main isometric floor illustration */}
+          {/* Main Floor 1 3D Isometric Headquarters Illustration */}
           <img
             className="office-illustration"
             src="/images/gx-office.jpg"
@@ -261,7 +277,7 @@ export function OfficeMap({
               <button
                 key={spot.id}
                 className={`furniture-hotspot ${spot.type} ${isSpotOccupied ? "occupied" : ""} ${isMeSittingHere ? "me-seated" : ""}`}
-                style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+                style={{ left: `${spot.x}%`, top: `${spot.y}%`, zIndex: Math.round(spot.y) }}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSitOnFurniture(spot);
@@ -284,7 +300,7 @@ export function OfficeMap({
             );
           })}
 
-          {/* Destination Waypoint Ripple Marker */}
+          {/* Realistic Destination Waypoint Ripple Marker */}
           {waypoint && (
             <div
               key={waypoint.key}
@@ -327,7 +343,7 @@ export function OfficeMap({
                   {
                     left: `${member.x}%`,
                     top: `${member.y}%`,
-                    zIndex: Math.round(member.y) + 5,
+                    zIndex: Math.round(member.y) + (member.action === "sit" ? 2 : 5),
                     "--person-color": member.color,
                   } as CSSProperties
                 }
@@ -357,8 +373,9 @@ export function OfficeMap({
               {
                 left: `${data.me.x}%`,
                 top: `${data.me.y}%`,
-                zIndex: Math.round(data.me.y) + 5,
+                zIndex: Math.round(data.me.y) + (isSitting ? 2 : 5),
                 "--person-color": data.me.color,
+                "--walk-time": `${walkDurationSec}s`,
               } as CSSProperties
             }
             aria-label="Seu avatar — clique para personalizar"
@@ -465,7 +482,7 @@ export function OfficeMap({
           </div>
         </div>
 
-        {/* If seated, show Stand Up quick button */}
+        {/* Quick Stand Up button when seated */}
         {isSitting && (
           <button className="stand-up-button" onClick={standUp} title="Levantar da cadeira">
             <Armchair size={13} />

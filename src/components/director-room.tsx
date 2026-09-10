@@ -43,6 +43,7 @@ export function DirectorRoom({
   const [waypoint, setWaypoint] = useState<{ x: number; y: number; key: number } | null>(null);
   const [hoveredFurniture, setHoveredFurniture] = useState<FurnitureSpot | null>(null);
   const [isLocalWalking, setIsLocalWalking] = useState(false);
+  const [walkDurationSec, setWalkDurationSec] = useState(0.45);
 
   const container = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
@@ -78,32 +79,46 @@ export function DirectorRoom({
     const dy = roundedY - data.me.y;
     const dir = calcDirection(dx, dy);
 
+    const dist = Math.hypot(dx, dy);
+    const speed = 28;
+    const durationMs = Math.max(280, Math.min(2200, Math.round((dist / speed) * 1000)));
+    const durationSec = durationMs / 1000;
+    setWalkDurationSec(durationSec);
+
     setWaypoint({ x: roundedX, y: roundedY, key: Date.now() });
     setIsLocalWalking(true);
     if (walkTimer.current) clearTimeout(walkTimer.current);
     walkTimer.current = setTimeout(() => {
       setIsLocalWalking(false);
       onMove(roundedX, roundedY, "idle", dir, null);
-    }, 450);
+    }, durationMs);
 
     onMove(roundedX, roundedY, "walk", dir, null);
   };
 
   const handleSitOnFurniture = (spot: FurnitureSpot) => {
+    const dx = spot.x - data.me.x;
+    const dy = spot.y - data.me.y;
+    const dist = Math.hypot(dx, dy);
+    const speed = 28;
+    const durationMs = Math.max(250, Math.min(2000, Math.round((dist / speed) * 1000)));
+    const durationSec = durationMs / 1000;
+    setWalkDurationSec(durationSec);
+
     setWaypoint({ x: spot.x, y: spot.y, key: Date.now() });
     setIsLocalWalking(true);
     if (walkTimer.current) clearTimeout(walkTimer.current);
     walkTimer.current = setTimeout(() => {
       setIsLocalWalking(false);
       onMove(spot.x, spot.y, "sit", spot.direction, spot.id);
-    }, 400);
+    }, durationMs);
 
     onMove(spot.x, spot.y, "walk", spot.direction, spot.id);
   };
 
   const standUp = () => {
     setIsLocalWalking(false);
-    onMove(data.me.x, Math.min(85, data.me.y + 2), "idle", "dr", null);
+    onMove(data.me.x, Math.min(85, data.me.y + 2.5), "idle", "dr", null);
   };
 
   const keyMove = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -126,12 +141,13 @@ export function DirectorRoom({
     const dir = delta[2];
 
     if (Math.abs((newX - 50) / 46) + Math.abs((newY - 56) / 36) < 1 && newY > 29) {
+      setWalkDurationSec(0.25);
       setIsLocalWalking(true);
       if (walkTimer.current) clearTimeout(walkTimer.current);
       walkTimer.current = setTimeout(() => {
         setIsLocalWalking(false);
         onMove(newX, newY, "idle", dir, null);
-      }, 350);
+      }, 260);
 
       onMove(newX, newY, "walk", dir, null);
     }
@@ -233,7 +249,7 @@ export function DirectorRoom({
               <button
                 key={spot.id}
                 className={`furniture-hotspot ${spot.type} ${isSpotOccupied ? "occupied" : ""} ${isMeSittingHere ? "me-seated" : ""}`}
-                style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+                style={{ left: `${spot.x}%`, top: `${spot.y}%`, zIndex: Math.round(spot.y) }}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSitOnFurniture(spot);
@@ -291,7 +307,7 @@ export function DirectorRoom({
                 {
                   left: `${member.x}%`,
                   top: `${member.y}%`,
-                  zIndex: Math.round(member.y) + 5,
+                  zIndex: Math.round(member.y) + (member.action === "sit" ? 2 : 5),
                   "--person-color": member.color,
                 } as CSSProperties
               }
@@ -320,8 +336,9 @@ export function DirectorRoom({
               {
                 left: `${data.me.x}%`,
                 top: `${data.me.y}%`,
-                zIndex: Math.round(data.me.y) + 5,
+                zIndex: Math.round(data.me.y) + (isSitting ? 2 : 5),
                 "--person-color": data.me.color,
+                "--walk-time": `${walkDurationSec}s`,
               } as CSSProperties
             }
             aria-label="Seu avatar na sala da diretoria — clique para personalizar"
@@ -426,7 +443,7 @@ export function DirectorRoom({
           </div>
         </div>
 
-        {/* If seated, show Stand Up quick button */}
+        {/* Quick Stand Up button when seated */}
         {isSitting && (
           <button className="stand-up-button" onClick={standUp} title="Levantar da cadeira">
             <Armchair size={13} />

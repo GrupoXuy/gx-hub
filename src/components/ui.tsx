@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState, type ReactNode, type ButtonHTMLAttributes } from "react";
+import { useEffect, useId, useRef, type ReactNode, type ButtonHTMLAttributes } from "react";
 import { Armchair, Monitor, Presentation, Coffee, ShieldCheck, X } from "lucide-react";
 import { initials, type Member, type Direction, type AvatarAction } from "@/lib/workspace";
 
@@ -104,7 +104,7 @@ export function PixelAvatar({
   const female = member.gender === "female";
 
   const hash = member.id ? [...member.id].reduce((sum, c) => sum + c.charCodeAt(0), 0) : 0;
-  const skins = ["#e6b990", "#c79372", "#dca786"];
+  const skins = ["#e8bc94", "#c99574", "#dda888"];
   const skin = skins[hash % 3];
   const maleHairs = ["#473228", "#2a2220", "#5c432d"];
   const femaleHairs = ["#443026", "#231c1a", "#63442f", "#846549"];
@@ -119,7 +119,7 @@ export function PixelAvatar({
 
   return (
     <span
-      className={`pixel-avatar-wrapper ${own ? "is-own" : ""} ${isSitting ? "is-sitting" : ""} ${isWalking ? "is-walking" : ""} ${isWaving ? "is-waving" : ""}`}
+      className={`pixel-avatar-wrapper ${own ? "is-own" : ""} ${isSitting ? "is-sitting" : ""} ${isWalking ? "is-walking" : "is-idle"} ${isWaving ? "is-waving" : ""}`}
       style={{ width: size * 0.72, height: size }}
     >
       <svg
@@ -130,190 +130,207 @@ export function PixelAvatar({
         aria-hidden="true"
         className="pixel-avatar-svg"
       >
-        {/* Isometric ground shadow */}
+        <defs>
+          {/* Subtle linear lighting gradients matching 3D isometric room lights */}
+          <linearGradient id="suitLight" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.25" />
+          </linearGradient>
+          <linearGradient id="skinLight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.12" />
+          </linearGradient>
+        </defs>
+
+        {/* Soft realistic isometric ambient ground shadow */}
         <ellipse
           cx="16"
-          cy={isSitting ? "42" : "42"}
-          rx={isSitting ? "13" : "11"}
-          ry={isSitting ? "4.2" : "3.4"}
-          fill={own ? "#dfbe7a" : "#000000"}
-          opacity={own ? 0.45 : 0.32}
+          cy={isSitting ? "41.5" : "42.5"}
+          rx={isSitting ? "13.5" : "11"}
+          ry={isSitting ? "4.5" : "3.6"}
+          fill={own ? "#dfbe7a" : "#080a0a"}
+          opacity={own ? 0.46 : 0.38}
           className="avatar-ground-shadow"
         />
 
-        {/* Character group (with optional flip for left-facing directions) */}
+        {/* Character container (supports 4-direction isometric facing) */}
         <g transform={isFlipped ? "translate(32, 0) scale(-1, 1)" : undefined}>
           {isBack ? (
             /* ============================================================
-               BACK FACING SPRITE (ul / ur)
+               ISOMETRIC BACK SPRITE (ul / ur)
                ============================================================ */
             <g className="avatar-body-group">
-              {/* Legs / Lower body */}
+              {/* Lower Body */}
               {isSitting ? (
                 <g className="avatar-legs-seated-back">
-                  <path d="M9 28H23V36H9Z" fill="#24282e" />
-                  <path d="M9 36H15V42H9Z" fill="#181a1f" />
-                  <path d="M17 36H23V42H17Z" fill="#181a1f" />
+                  <path d="M8 27H24V34H8Z" fill="#24282f" />
+                  <path d="M9 34H15V41H9Z" fill="#191c21" />
+                  <path d="M17 34H23V41H17Z" fill="#14171b" />
+                  <path d="M8 39H15V43H8Z" fill="#0c0e10" />
+                  <path d="M16 39H23V43H16Z" fill="#0c0e10" />
                 </g>
               ) : (
                 <g className={`avatar-legs-back ${isWalking ? "anim-walk-legs" : ""}`}>
-                  <path d="M10 29H15V41H9V36H10V29Z" fill="#25292f" />
-                  <path d="M17 29H22V41H16V36H17V29Z" fill="#1d2126" />
-                  <path d="M8 39H15V43H8Z" fill="#111315" />
-                  <path d="M16 39H23V43H16Z" fill="#111315" />
+                  <path d="M10 28H15V40H9V35H10V28Z" fill="#262b32" />
+                  <path d="M17 28H22V40H16V35H17V28Z" fill="#1c2026" />
+                  <path d="M8 38H15V42H8Z" fill="#101214" />
+                  <path d="M16 38H23V42H16Z" fill="#0a0c0e" />
                 </g>
               )}
 
               {/* Back Torso / Suit Jacket */}
-              <path d="M8 18H24V30H8Z" fill={suitColor} />
-              <path d="M8 18H10V30H8Z" fill="#000" opacity=".22" />
-              <path d="M15 20H17V30H15Z" fill="#000" opacity=".18" /> {/* Center jacket vent */}
-              <path d="M5 20H8V29H5Z" fill={suitColor} />
-              <path d="M24 20H27V29H24Z" fill={suitColor} />
-              <path d="M5 28H8V33H5Z" fill={skin} />
-              <path d="M24 28H27V33H24Z" fill={skin} />
+              <g transform={isSitting ? "translate(0, 2)" : undefined} className="avatar-torso-breathe">
+                <path d="M8 18H24V29H8Z" fill={suitColor} />
+                <path d="M8 18H24V29H8Z" fill="url(#suitLight)" />
+                <path d="M15 20H17V29H15Z" fill="#000" opacity=".22" /> {/* Center back vent */}
+                <path d="M5 20H8V28H5Z" fill={suitColor} />
+                <path d="M24 20H27V28H24Z" fill={suitColor} />
+                <path d="M5 28H8V32H5Z" fill={skin} />
+                <path d="M24 28H27V32H24Z" fill={skin} />
 
-              {/* Shirt Collar back */}
-              <path d="M12 16H20V19H12Z" fill="#f2efe9" />
+                {/* Shirt Collar back */}
+                <path d="M12 16H20V19H12Z" fill="#f4f1ea" />
 
-              {/* Head / Hair Back */}
-              <path d="M8 4H24V18H8Z" fill={hair} />
-              <path d="M6 7H9V16H6Z" fill={hair} />
-              <path d="M23 7H26V16H23Z" fill={hair} />
-              <path d="M9 4H23V6H9Z" fill="#fff" opacity=".12" />
+                {/* Head / Hair Back */}
+                <path d="M8 4H24V18H8Z" fill={hair} />
+                <path d="M6 7H9V16H6Z" fill={hair} />
+                <path d="M23 7H26V16H23Z" fill={hair} />
+                <path d="M9 4H23V6H9Z" fill="#ffffff" opacity=".16" />
 
-              {/* Female long ponytail / hair down back */}
-              {female && (
-                <g>
-                  <path d="M11 15H21V25H11Z" fill={hair} />
-                  <path d="M13 25H19V28H13Z" fill={hair} />
-                  <path d="M14 15H18V17H14Z" fill="#d9b66c" /> {/* Gold hair tie */}
-                </g>
-              )}
+                {/* Female layered hair back */}
+                {female && (
+                  <g>
+                    <path d="M10 15H22V26H10Z" fill={hair} />
+                    <path d="M12 26H20V29H12Z" fill={hair} />
+                    <path d="M14 15H18V17H14Z" fill="#d9b66c" /> {/* Gold accessory tie */}
+                  </g>
+                )}
+              </g>
             </g>
           ) : (
             /* ============================================================
-               FRONT FACING SPRITE (dl / dr)
+               ISOMETRIC FRONT SPRITE (dl / dr)
                ============================================================ */
             <g className="avatar-body-group">
-              {/* Legs / Lower body */}
+              {/* Lower Body */}
               {isSitting ? (
                 <g className="avatar-legs-seated-front">
-                  {/* Seated Thighs (extended horizontally) */}
-                  <path d="M8 26H24V32H8Z" fill="#2c3038" />
-                  <path d="M8 26H24V28H8Z" fill="#3a404a" />
-                  {/* Lower calves bent down */}
-                  <path d="M10 32H16V40H10Z" fill="#22262c" />
-                  <path d="M17 32H23V40H17Z" fill="#1b1e23" />
-                  {/* Shoes planted forward */}
-                  <path d="M9 39H16V43H7V41H9Z" fill="#111315" />
-                  <path d="M18 39H25V43H16V41H18Z" fill="#111315" />
-                  {/* Suit jacket hem over lap */}
-                  <path d="M8 25H24V28H8Z" fill={suitColor} />
+                  {/* Seated Thighs on Chair */}
+                  <path d="M8 25H24V31H8Z" fill="#2d333c" />
+                  <path d="M8 25H24V27H8Z" fill="#3c434f" />
+                  {/* Calves hanging down */}
+                  <path d="M10 31H15V39H10Z" fill="#23272e" />
+                  <path d="M17 31H22V39H17Z" fill="#1b1f24" />
+                  {/* Shoes planted flat */}
+                  <path d="M8 38H15V42H7V40H8Z" fill="#0f1113" />
+                  <path d="M17 38H24V42H16V40H17Z" fill="#090a0c" />
+                  {/* Jacket Lap overlay */}
+                  <path d="M8 24H24V27H8Z" fill={suitColor} />
                   {/* Hands resting on lap */}
-                  <path d="M9 27H13V31H9Z" fill={skin} />
-                  <path d="M19 27H23V31H19Z" fill={skin} />
+                  <path d="M9 26H13V30H9Z" fill={skin} />
+                  <path d="M19 26H23V30H19Z" fill={skin} />
                 </g>
               ) : (
                 <g className={`avatar-legs-front ${isWalking ? "anim-walk-legs" : ""}`}>
-                  <path d="M10 29H16V39H9V36H10V29Z" fill="#2d323a" />
-                  <path d="M16 29H22V39H16V29Z" fill="#23272e" />
-                  <path d="M8 38H15V42H7V40H8ZM17 38H24V42H16V40H17Z" fill="#111315" />
-                  <path d="M9 38H15V40H9Z" fill="#3a404a" opacity=".4" />
+                  <path d="M10 28H16V38H9V35H10V28Z" fill="#2c323a" />
+                  <path d="M16 28H22V38H16V28Z" fill="#21262d" />
+                  <path d="M8 37H15V41H7V39H8ZM17 37H24V41H16V39H17Z" fill="#0f1113" />
+                  <path d="M9 37H15V39H9Z" fill="#383e48" opacity=".4" />
                 </g>
               )}
 
-              {/* Torso / Suit Jacket */}
-              <g transform={isSitting ? "translate(0, 2)" : undefined}>
-                <path d="M8 19H24V29H8Z" fill={suitColor} />
-                <path d="M8 19H11V29H8Z" fill="#000" opacity=".16" />
-                <path d="M11 19H21V22H11Z" fill="#fff" opacity=".12" />
+              {/* Torso & Upper Body with gentle breathing */}
+              <g transform={isSitting ? "translate(0, 2)" : undefined} className="avatar-torso-breathe">
+                {/* Suit Jacket */}
+                <path d="M8 18H24V28H8Z" fill={suitColor} />
+                <path d="M8 18H24V28H8Z" fill="url(#suitLight)" />
+                <path d="M8 18H11V28H8Z" fill="#000" opacity=".18" />
 
-                {/* White Shirt Collar & Tie */}
-                <path d="M13 18H19V24H13Z" fill="#f5f2eb" />
-                <path d="M15 20H17V26H15Z" fill="#1a1c1e" /> {/* Executive dark tie */}
-                <path d="M15 21H17V23H15Z" fill="#c7a66e" /> {/* Gold tie pin / clasp */}
+                {/* White Shirt Collar & Executive Tie */}
+                <path d="M13 17H19V23H13Z" fill="#f8f5ee" />
+                <path d="M15 19H17V25H15Z" fill="#1a1c1e" />
+                <path d="M15 20H17V22H15Z" fill="#c7a66e" /> {/* Gold tie accent */}
 
-                {/* Left Arm / Sleeve */}
-                <path d="M5 21H8V29H4V25H5Z" fill={suitColor} />
-                <path d="M4 28H8V33H4Z" fill={skin} />
+                {/* Left Arm */}
+                <path d="M5 20H8V28H5Z" fill={suitColor} />
+                <path d="M4 27H8V32H4Z" fill={skin} />
 
-                {/* Right Arm (Waving or Normal) */}
+                {/* Right Arm (Normal or Animated Wave) */}
                 {isWaving ? (
                   <g className="anim-waving-arm">
-                    <path d="M23 15H27V23H23Z" fill={suitColor} />
-                    <path d="M24 10H28V15H24Z" fill={skin} />
+                    <path d="M23 14H27V22H23Z" fill={suitColor} />
+                    <path d="M24 9H28V14H24Z" fill={skin} />
                   </g>
                 ) : (
                   <g>
-                    <path d="M24 21H27V29H24Z" fill={suitColor} />
-                    <path d="M24 28H28V33H24Z" fill={skin} />
+                    <path d="M24 20H27V28H24Z" fill={suitColor} />
+                    <path d="M24 27H28V32H24Z" fill={skin} />
                   </g>
                 )}
 
-                {/* Female gold necklace / brooch */}
+                {/* Female gold necklace accent */}
                 {female && (
                   <g>
-                    <path d="M13 18H19V20H13Z" fill="#dfc07b" />
-                    <circle cx="16" cy="21" r="1.2" fill="#f0d595" />
+                    <path d="M13 17H19V19H13Z" fill="#dfc07b" />
+                    <circle cx="16" cy="20" r="1.1" fill="#f3da9e" />
                   </g>
                 )}
               </g>
 
               {/* Neck & Head */}
-              <g transform={isSitting ? "translate(0, 2)" : undefined}>
-                <path d="M12 16H20V20H12Z" fill={skin} />
-                <path d="M9 5H21V8H24V15H22V18H10V16H7V9H9Z" fill={skin} />
+              <g transform={isSitting ? "translate(0, 2)" : undefined} className="avatar-head-group">
+                <path d="M12 15H20V19H12Z" fill={skin} />
+                <path d="M9 4H21V7H24V14H22V17H10V15H7V8H9Z" fill={skin} />
+                <path d="M9 4H21V7H24V14H22V17H10V15H7V8H9Z" fill="url(#skinLight)" />
 
                 {/* Hairstyle */}
                 {female ? (
                   <g>
-                    {/* Female layered hair with elegant bangs */}
-                    <path d="M7 3H23V7H25V12H23V6H9V12H7V7H9V4H7Z" fill={hair} />
-                    <path d="M8 4H22V8H20V10H18V8H14V10H12V8H8Z" fill={hair} />
-                    <path d="M22 8H25V24H22V20H23V14H22Z" fill={hair} /> {/* Side lock / ponytail */}
-                    <path d="M9 4H21V6H9Z" fill="#fff" opacity=".18" /> {/* Hair shine */}
+                    {/* Layered chic female hairstyle */}
+                    <path d="M7 2H23V6H25V11H23V5H9V11H7V6H9V3H7Z" fill={hair} />
+                    <path d="M8 3H22V7H20V9H18V7H14V9H12V7H8Z" fill={hair} />
+                    <path d="M22 7H25V23H22V19H23V13H22Z" fill={hair} />
+                    <path d="M9 3H21V5H9Z" fill="#ffffff" opacity=".2" />
                     {/* Rosy cheeks */}
-                    <rect x="9" y="14" width="2" height="1.5" fill="#e28c82" opacity=".6" />
-                    <rect x="20" y="14" width="2" height="1.5" fill="#e28c82" opacity=".6" />
-                    {/* Gold earring */}
-                    <circle cx="23.5" cy="14" r="0.9" fill="#e8d5a4" />
+                    <rect x="9" y="13" width="2" height="1.5" fill="#e4877c" opacity=".6" />
+                    <rect x="20" y="13" width="2" height="1.5" fill="#e4877c" opacity=".6" />
+                    <circle cx="23.5" cy="13" r="0.9" fill="#e8d5a4" />
                   </g>
                 ) : (
                   <g>
-                    {/* Male stylish side-part */}
-                    <path d="M9 4H20V5H23V9H24V12H21V8H13V10H8V14H6V8H8V5H9Z" fill={hair} />
-                    <path d="M10 4H19V6H10Z" fill="#fff" opacity=".18" /> {/* Hair highlight */}
+                    {/* Polished executive male side-part */}
+                    <path d="M9 3H20V4H23V8H24V11H21V7H13V9H8V13H6V7H8V4H9Z" fill={hair} />
+                    <path d="M10 3H19V5H10Z" fill="#ffffff" opacity=".2" />
                   </g>
                 )}
 
-                {/* Eyes with blinking frame capability */}
+                {/* Realistic Eyes with Natural Blinking Animation */}
                 <g className="avatar-eyes">
-                  <path d="M10 11H12V13H10ZM18 11H20V13H18Z" fill="#2b2422" />
-                  <rect x="11" y="11" width="1" height="1" fill="#ffffff" opacity=".8" />
-                  <rect x="19" y="11" width="1" height="1" fill="#ffffff" opacity=".8" />
+                  <path d="M10 10H12V12H10ZM18 10H20V12H18Z" fill="#282220" />
+                  <rect x="11" y="10" width="1" height="1" fill="#ffffff" opacity=".85" />
+                  <rect x="19" y="10" width="1" height="1" fill="#ffffff" opacity=".85" />
                 </g>
 
                 {/* Nose & Mouth */}
-                <path d="M15 13H17V15H15Z" fill="#b98263" opacity=".5" />
-                <path d="M14 16H18V17H14Z" fill="#9f664d" />
+                <path d="M15 12H17V14H15Z" fill="#b98263" opacity=".45" />
+                <path d="M14 15H18V16H14Z" fill="#a1664e" />
               </g>
             </g>
           )}
         </g>
       </svg>
 
-      {/* Floating Wave Hand Bubble */}
+      {/* Floating Hand Wave Bubble */}
       {isWaving && <span className="wave-bubble">👋</span>}
 
-      {/* Speaking Indicator */}
+      {/* Live Speaking Indicator Waves */}
       {member.micEnabled && (
         <span className="avatar-speaking-waves" title="Falando">
           <i /><i /><i />
         </span>
       )}
 
-      {/* Seated Badge */}
+      {/* Seated Subtle Badge */}
       {isSitting && <span className="avatar-sitting-indicator" title="Sentado">🪑</span>}
     </span>
   );
