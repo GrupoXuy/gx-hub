@@ -12,6 +12,26 @@ Um workspace em português inspirado em ambientes isométricos, com a identidade
 - Convites de visitante com validade de sete dias e entrada com nome personalizado.
 - Interface responsiva e navegação por teclado.
 
+## Validar credenciais e publicar a versão atual
+
+A publicação está preparada por scripts seguros, sem salvar tokens em remotes Git:
+
+1. Configure como **secrets do ambiente** (não envie no chat nem commite): `GITHUB_TOKEN` e `VERCEL_TOKEN`.
+2. Opcionalmente defina `GITHUB_OWNER=GrupoXuy`, `GITHUB_REPO=gx-hub-escritorio`, `VERCEL_PROJECT_NAME=gx-hub-escritorio` e `VERCEL_TEAM_ID` usando `.env.deploy.example` como modelo.
+3. Valide as contas e o vínculo GitHub/Vercel:
+
+```bash
+GITHUB_TOKEN=... VERCEL_TOKEN=... ./scripts/validate-deployment.sh
+```
+
+4. Depois que a validação mostrar **Credenciais válidas**, publique:
+
+```bash
+GITHUB_TOKEN=... VERCEL_TOKEN=... ./scripts/publish-production.sh
+```
+
+O segundo script recusa alterações não commitadas, envia a `main` para `GrupoXuy/gx-hub-escritorio`, acompanha o build automático e informa a URL gerada. Os tokens são usados apenas em memória pelo processo e nunca entram no remote, commit ou log.
+
 ## Deploy permanente (GitHub + Vercel + Neon) — ✅ ATIVO
 
 - **Link oficial de acesso:** https://gxhubofficemeet.vercel.app
