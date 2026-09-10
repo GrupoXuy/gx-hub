@@ -95,7 +95,7 @@ export default function WorkspaceApp() {
     if (movementTimer.current) clearTimeout(movementTimer.current);
     movementTimer.current = setTimeout(() => patch({ x, y, roomId }), 180);
   }, [setData, patch]);
-  const visit = useCallback((id: string) => { setActiveRoom(id); setDialog(null); if (id === "diretoria") { navigate("director"); return; } if (view !== "office") navigate("office"); if (id !== "all") { const position = ROOM_POSITIONS[id]; patch({ roomId: id, ...position }); } }, [view, navigate, patch]);
+  const visit = useCallback((id: string) => { if (id === "diretoria" && !data.me.isAdmin) { notify("A Sala da diretoria é exclusiva para administradores."); return; } setActiveRoom(id); setDialog(null); if (id === "diretoria") { navigate("director"); return; } if (view !== "office") navigate("office"); if (id !== "all") { const position = ROOM_POSITIONS[id]; patch({ roomId: id, ...position }); } }, [data.me.isAdmin, view, navigate, patch, notify]);
   const openJoin = (room: Room) => { if (call.roomId === room.id) { setDialog(null); setCallOpen(true); } else setDialog({ type: "join", room }); };
   const showMember = (member: Member) => setDialog({ type: "member", member });
   const showMeeting = (meeting: Meeting) => { setNotificationsOpen(false); setDialog({ type: "meeting", meeting }); };

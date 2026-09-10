@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     await seedWorkspace();
     const body = await request.json();
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     if (!validEmail(email) || !password) return Response.json({ error: "Informe seu email e senha pessoais." }, { status: 400 });
     const [member] = await db.select().from(users).where(and(ilike(users.email, email), eq(users.isDemo, false))).limit(1);

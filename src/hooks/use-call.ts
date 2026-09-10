@@ -16,6 +16,7 @@ export function useCall(me: Member, notify: (message: string) => void, onChange:
   const [participants, setParticipants] = useState<Member[]>([]);
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("user");
   const [connecting, setConnecting] = useState(false);
   const peers = useRef(new Map<string, Peer>());
   const local = useRef<MediaStream | null>(null);
@@ -151,7 +152,7 @@ export function useCall(me: Member, notify: (message: string) => void, onChange:
       const result = await api<{ iceServers: RTCIceServer[] }>("/api/call", { method: "POST", body: JSON.stringify({ action: "join", roomId: targetRoom, micEnabled: mode !== "listen", cameraEnabled: mode === "video" }) });
       config.current = { iceServers: result.iceServers };
       local.current = stream; activeRoom.current = targetRoom; cursor.current = 0; generation.current++;
-      setLocalStream(stream); setMicOn(mode !== "listen"); setCameraOn(mode === "video"); setRoomId(targetRoom); onChange();
+      setLocalStream(stream); setMicOn(mode !== "listen"); setCameraOn(mode === "video"); setCameraFacing("user"); setRoomId(targetRoom); onChange();
     } catch (error) {
       stream?.getTracks().forEach(track => track.stop());
       if (error instanceof DOMException && ["NotAllowedError", "PermissionDeniedError"].includes(error.name)) throw new Error("O acesso à câmera ou ao microfone foi bloqueado. Permita o acesso no navegador ou entre apenas para ouvir.");
@@ -179,6 +180,20 @@ export function useCall(me: Member, notify: (message: string) => void, onChange:
       if (local.current) setLocalStream(new MediaStream(local.current.getTracks()));
     } catch { notify("Não foi possível acessar o microfone. Verifique as permissões do navegador."); }
   }, [micOn, cameraOn, notify, updateMedia]);
+
+  const switchCamera = useCallback(async () => {
+    if (!activeRoom.current || !cameraOn || screen.current) return;
+    try {
+      const nextFacing = cameraFacing === "user" ? "environment" : "user";
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacing }, width: { ideal: 960 }, height: { ideal: 540 } } });
+      const nextTrack = stream.getVideoTracks()[0];
+      local.current?.getVideoTracks().forEach(track => { track.stop(); local.current?.removeTrack(track); });
+      local.current?.addTrack(nextTrack);
+      await Promise.all([...peers.current.values()].map(peer => peer.video.replaceTrack(nextTrack)));
+      setCameraFacing(nextFacing);
+      setLocalStream(new MediaStream(local.current?.getTracks() || []));
+    } catch { notify("Não foi possível alternar entre a câmera frontal e traseira."); }
+  }, [cameraFacing, cameraOn, notify]);
 
   const toggleCamera = useCallback(async () => {
     if (!activeRoom.current) return;
@@ -215,6 +230,6 @@ export function useCall(me: Member, notify: (message: string) => void, onChange:
     } catch (error) { if (!(error instanceof DOMException && error.name === "NotAllowedError")) notify("Não foi possível compartilhar a tela. Tente novamente."); }
   }, [stopSharing, notify, updateMedia, micOn]);
 
-  return { roomId, localStream, screenStream, remoteStreams, participants, micOn, cameraOn, connecting, join, leave, toggleMic, toggleCamera, shareScreen };
+  return { roomId, localStream, screenStream, remoteStreams, participants, micOn, cameraOn, cameraFacing, connecting, join, leave, toggleMic, toggleCamera, switchCamera, shareScreen };
 }
 export type CallController = ReturnType<typeof useCall>;
