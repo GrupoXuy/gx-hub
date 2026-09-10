@@ -140,7 +140,39 @@ export default function WorkspaceApp() {
       {view === "rooms" && <RoomsView data={data} onJoin={openJoin} onVisit={visit} onSchedule={() => setDialog({ type: "schedule" })} />}
       {view === "team" && <TeamView data={data} onMember={showMember} onInvite={() => setDialog({ type: "invite" })} />}
       {view === "agenda" && <AgendaView data={data} onMeeting={showMeeting} onSchedule={() => setDialog({ type: "schedule" })} />}
-      {view === "director" && data.me.isAdmin && <DirectorRoom room={directorRoom} data={data} call={call} onBack={() => navigate("rooms")} onMove={moveDirector} onJoin={() => call.roomId === "diretoria" ? setCallOpen(true) : openJoin(directorRoom)} />}
+      {view === "director" && data.me.isAdmin && (
+        <>
+          <div className="office-layout">
+            <DirectorRoom
+              room={directorRoom}
+              data={data}
+              call={call}
+              onBack={() => {
+                setActiveRoom("all");
+                navigate("office");
+              }}
+              onJoin={() => (call.roomId === "diretoria" ? setCallOpen(true) : openJoin(directorRoom))}
+              onMove={moveDirector}
+              onProfile={() => setDialog({ type: "profile" })}
+              onStatus={(status) => patch({ status })}
+              onSettings={() => setDialog({ type: "settings" })}
+              onHand={() => patch({ handRaised: !data.me.handRaised })}
+              onReaction={react}
+              reaction={reaction}
+              onOpenCall={() => setCallOpen(true)}
+            />
+            <SocialPanel
+              data={data}
+              onMember={showMember}
+              onTeam={() => navigate("team")}
+              onMessage={onMessage}
+              onClearHistory={onClearHistory}
+              notify={notify}
+            />
+          </div>
+          <MeetingsPreview data={data} onAgenda={() => navigate("agenda")} onMeeting={showMeeting} />
+        </>
+      )}
       <footer className="workspace-footer"><span><span className="footer-x">X</span>Um ecossistema. Infinitas possibilidades.</span><span>Feito para aproximar.<Sparkles size={11} /></span></footer>
     </main></div>
     {dialog?.type === "profile" && <ProfileDialog me={data.me} onSave={saveProfile} onSaveCredentials={data.me.isAdmin ? saveCredentials : undefined} onClose={close} />}
