@@ -24,6 +24,9 @@ create table if not exists gx_users (
   is_demo boolean not null default false,
   is_admin boolean not null default false,
   can_access_group_system boolean not null default false,
+  is_guest boolean not null default false,
+  guest_invite_id text,
+  guest_expires_at timestamptz,
   gender text,
   access_token text,
   hand_raised boolean not null default false,
@@ -70,3 +73,26 @@ create table if not exists gx_invitations (
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );
+
+create table if not exists gx_client_invites (
+  id text primary key default gen_random_uuid(),
+  created_by text not null references gx_users(id),
+  meeting_id text not null references gx_meetings(id),
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  guest_user_id text,
+  created_at timestamptz not null default now()
+);
+create index if not exists gx_client_invites_token_idx on gx_client_invites (id, used_at, expires_at);
+
+create table if not exists gx_leads (
+  id text primary key default gen_random_uuid(),
+  name text not null,
+  gender text not null,
+  whatsapp text not null,
+  email text not null,
+  client_invite_id text not null references gx_client_invites(id),
+  meeting_id text not null references gx_meetings(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists gx_leads_created_at_idx on gx_leads (created_at desc);

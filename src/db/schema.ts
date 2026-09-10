@@ -14,6 +14,9 @@ export const users = pgTable("gx_users", {
   isDemo: boolean("is_demo").notNull().default(false),
   isAdmin: boolean("is_admin").notNull().default(false),
   canAccessGroupSystem: boolean("can_access_group_system").notNull().default(false),
+  isGuest: boolean("is_guest").notNull().default(false),
+  guestInviteId: text("guest_invite_id"),
+  guestExpiresAt: timestamp("guest_expires_at", { withTimezone: true }),
   gender: text("gender"),
   email: text("email"),
   passwordHash: text("password_hash"),
@@ -66,5 +69,26 @@ export const invitations = pgTable("gx_invitations", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   createdBy: text("created_by").notNull().references(() => users.id),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const clientInvites = pgTable("gx_client_invites", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  meetingId: text("meeting_id").notNull().references(() => meetings.id),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  guestUserId: text("guest_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const leads = pgTable("gx_leads", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  gender: text("gender").notNull(),
+  whatsapp: text("whatsapp").notNull(),
+  email: text("email").notNull(),
+  clientInviteId: text("client_invite_id").notNull().references(() => clientInvites.id),
+  meetingId: text("meeting_id").notNull().references(() => meetings.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

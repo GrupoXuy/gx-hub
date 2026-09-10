@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { users, signals } from "@/db/schema";
-import { and, eq, gt, asc, or, lt } from "drizzle-orm";
-import { getMember, fail } from "@/lib/server";
+import { and, eq, gt, asc, or, lt, sql } from "drizzle-orm";
+import { getCallMember, fail } from "@/lib/server";
 import { ROOM_DATA } from "@/lib/workspace";
 export const dynamic = "force-dynamic";
 function iceServers() {
@@ -11,11 +11,11 @@ function iceServers() {
 }
 export async function POST(request: Request) {
   try {
-    const me = await getMember();
+    const me = await getCallMember();
     if (!me) return Response.json({ error: "Entre no escritório para iniciar uma chamada." }, { status: 401 });
     const body = await request.json();
     if (body.action === "leave") {
-      await db.update(users).set({ callRoom: null, micEnabled: false, cameraEnabled: false, lastSeen: new Date() }).where(eq(users.id, me.id));
+      await db.update(users).set({ callRoom: null, micEnabled: false, cameraEnabled: false, lastSeen: new Date(), ...(me.isGuest ? { guestExpiresAt: new Date() } : {}) }).where(eq(users.id, me.id));
       await db.delete(signals).where(or(eq(signals.fromId, me.id), eq(signals.toId, me.id)));
       return Response.json({ ok: true });
     }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     if (body.action !== "join") return Response.json({ error: "Ação inválida." }, { status: 400 });
     const room = ROOM_DATA.find(r => r.id === body.roomId);
     if (!room) return Response.json({ error: "Sala não encontrada." }, { status: 404 });
-    const participants = await db.select().from(users).where(and(eq(users.callRoom, room.id), gt(users.lastSeen, new Date(Date.now() - 25000)), eq(users.isDemo, false)));
+    const participants = await db.select().from(users).where(and(eq(users.callRoom, room.id), gt(users.lastSeen, new Date(Date.now() - 25000)), eq(users.isDemo, false), or(eq(users.isGuest, false), sql`${users.guestExpiresAt} > now()`)));
     if (participants.filter(p => p.id !== me.id).length >= room.capacity) return Response.json({ error: "Esta sala está cheia. Escolha outro ambiente." }, { status: 409 });
     await db.delete(signals).where(or(eq(signals.toId, me.id), eq(signals.fromId, me.id), lt(signals.createdAt, new Date(Date.now() - 3600000))));
     await db.update(users).set({ callRoom: room.id, roomId: room.id, micEnabled: !!body.micEnabled, cameraEnabled: !!body.cameraEnabled, lastSeen: new Date() }).where(eq(users.id, me.id));
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 }
 export async function GET(request: Request) {
   try {
-    const me = await getMember();
+    const me = await getCallMember();
     if (!me) return Response.json({ error: "Sessão não encontrada." }, { status: 401 });
     const url = new URL(request.url);
     const roomId = url.searchParams.get("roomId");
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     if (!roomId || me.callRoom !== roomId) return Response.json({ error: "Você não está nesta chamada." }, { status: 403 });
     await db.update(users).set({ lastSeen: new Date() }).where(eq(users.id, me.id));
     const [participants, incoming] = await Promise.all([
-      db.select().from(users).where(and(eq(users.callRoom, roomId), eq(users.isDemo, false), gt(users.lastSeen, new Date(Date.now() - 25000)))),
+      db.select().from(users).where(and(eq(users.callRoom, roomId), eq(users.isDemo, false), or(eq(users.isGuest, false), sql`${users.guestExpiresAt} > now()`), gt(users.lastSeen, new Date(Date.now() - 25000)))),
       db.select().from(signals).where(and(eq(signals.toId, me.id), eq(signals.roomId, roomId), gt(signals.id, after))).orderBy(asc(signals.id)).limit(100),
     ]);
     return Response.json({ participants, signals: incoming }, { headers: { "Cache-Control": "no-store" } });
