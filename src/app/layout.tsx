@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 const manrope = localFont({ src: "../../public/fonts/manrope.ttf", variable: "--font-manrope", display: "swap", weight: "200 800" });
 export const metadata: Metadata = {
@@ -11,5 +12,12 @@ export const metadata: Metadata = {
   applicationName: "GX Hub",
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="pt-BR" className={manrope.variable}><body>{children}</body></html>;
+  return (
+    <html lang="pt-BR" className={manrope.variable}>
+      <body>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  );
 }
